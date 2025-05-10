@@ -2,6 +2,7 @@ package cwchoiit.chat.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cwchoiit.chat.dto.Message;
+import cwchoiit.chat.session.WebSocketSessionManager;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 @Slf4j
@@ -17,60 +19,50 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 public class MessageHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper;
-    private WebSocketSession leftSide = null;
-    private WebSocketSession rightSide = null;
+    private final WebSocketSessionManager sessionManager;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         log.info("[afterConnectionEstablished] session id: {}", session.getId());
 
-        if (leftSide == null) {
-            leftSide = session;
-            return;
-        } else if (rightSide == null) {
-            rightSide = session;
-            return;
-        }
+        int SEND_TIME_LIMIT = 5000;
+        int BUFFERED_SIZE_LIMIT = 100 * 1024;
+        ConcurrentWebSocketSessionDecorator concurrentWebSocketSessionDecorator =
+                new ConcurrentWebSocketSessionDecorator(session, SEND_TIME_LIMIT, BUFFERED_SIZE_LIMIT);
 
-        log.warn("[afterConnectionEstablished] No available slots. Rejected session : {}", session.getId());
-        session.close();
+        sessionManager.storeSession(concurrentWebSocketSessionDecorator);
     }
 
     @Override
-    public void handleTransportError(WebSocketSession session, @NonNull Throwable exception) throws Exception {
+    public void handleTransportError(WebSocketSession session, @NonNull Throwable exception) {
         log.error("[handleTransportError] [{}] session id: {}", exception.getMessage(), session.getId(), exception);
+        sessionManager.terminateSession(session.getId());
     }
 
     @Override
-    public void afterConnectionClosed(WebSocketSession session, @NonNull CloseStatus status) throws Exception {
+    public void afterConnectionClosed(WebSocketSession session, @NonNull CloseStatus status) {
         log.info("[afterConnectionClosed] [{}] session id: {}", status, session.getId());
-        if (leftSide == session) {
-            leftSide = null;
-        } else if (rightSide == session) {
-            rightSide = null;
-        }
+        sessionManager.terminateSession(session.getId());
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         log.info("[handleTextMessage] Received TextMessage: [{}] from {}", message.getPayload(), session.getId());
         String payload = message.getPayload();
         try {
-            Message msg = objectMapper.readValue(payload, Message.class);
-            if (leftSide == session) {
-                sendMessage(rightSide, msg.content());
-            } else if (rightSide == session) {
-                sendMessage(leftSide, msg.content());
-            }
+            Message receivedMessage = objectMapper.readValue(payload, Message.class);
+            sessionManager.getSessions().stream()
+                    .filter(s -> !s.getId().equals(session.getId()))
+                    .forEach(s -> sendMessage(s, receivedMessage));
         } catch (Exception e) {
             log.error("[handleTextMessage] Failed to parse TextMessage: [{}] from {}", payload, session.getId(), e);
-            sendMessage(session, "Failed to parse message.");
+            sendMessage(session, new Message("System", "Failed to parse message"));
         }
     }
 
-    private void sendMessage(WebSocketSession session, String message) {
+    private void sendMessage(WebSocketSession session, Message message) {
         try {
-            String msg = objectMapper.writeValueAsString(new Message(message));
+            String msg = objectMapper.writeValueAsString(message);
             session.sendMessage(new TextMessage(msg));
             log.info("[sendMessage] Sent TextMessage: [{}] to {}", msg, session.getId());
         } catch (Exception e) {
