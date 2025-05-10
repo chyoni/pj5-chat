@@ -1,13 +1,13 @@
-package cwchoiit.chat;
+package cwchoiit.chat.server;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ChatApplication {
+public class ChatServerApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(ChatApplication.class, args);
+        SpringApplication.run(ChatServerApplication.class, args);
     }
 
 }

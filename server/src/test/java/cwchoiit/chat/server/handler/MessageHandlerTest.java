@@ -1,7 +1,7 @@
-package cwchoiit.chat.handler;
+package cwchoiit.chat.server.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import cwchoiit.chat.dto.Message;
+import cwchoiit.chat.server.dto.Message;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.ToString;

@@ -1,6 +1,6 @@
-package cwchoiit.chat.config;
+package cwchoiit.chat.server.config;
 
-import cwchoiit.chat.handler.MessageHandler;
+import cwchoiit.chat.server.handler.MessageHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;

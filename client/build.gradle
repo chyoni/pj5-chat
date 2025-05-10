@@ -1,0 +1,9 @@
+dependencies {
+    implementation 'org.jline:jline-terminal:3.28.0'
+    implementation 'org.jline:jline-reader:3.28.0'
+    implementation 'org.glassfish.tyrus:tyrus-container-jdk-client:2.2.0'
+    implementation 'org.glassfish.tyrus:tyrus-container-grizzly-client:2.2.0'
+
+//    testImplementation platform('org.junit:junit-bom:5.12.0')
+//    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
