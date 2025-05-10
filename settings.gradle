@@ -1,1 +1,4 @@
 rootProject.name = 'pj5-chat'
+
+include('server')
+include('client')

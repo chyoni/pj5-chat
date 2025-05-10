@@ -1,8 +1,8 @@
-package cwchoiit.chat.handler;
+package cwchoiit.chat.server.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import cwchoiit.chat.dto.Message;
-import cwchoiit.chat.session.WebSocketSessionManager;
+import cwchoiit.chat.server.dto.Message;
+import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
