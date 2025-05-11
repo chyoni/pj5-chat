@@ -1,7 +1,9 @@
 package cwchoiit.chat.server.handler;
 
 import cwchoiit.chat.serializer.Serializer;
-import cwchoiit.chat.server.dto.Message;
+import cwchoiit.chat.server.dto.MessageDto;
+import cwchoiit.chat.server.entity.Message;
+import cwchoiit.chat.server.repository.MessageRepository;
 import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 public class MessageHandler extends TextWebSocketHandler {
 
     private final WebSocketSessionManager sessionManager;
+    private final MessageRepository messageRepository;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -48,29 +51,31 @@ public class MessageHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         log.info("[handleTextMessage] Received TextMessage: [{}] from {}", message.getPayload(), session.getId());
         try {
-            Serializer.deserialize(message.getPayload(), Message.class)
-                    .ifPresent(msg ->
-                            sessionManager.getSessions().stream()
-                                    .filter(s -> !s.getId().equals(session.getId()))
-                                    .forEach(s -> sendMessage(s, msg))
+            Serializer.deserialize(message.getPayload(), MessageDto.class)
+                    .ifPresent(msg -> {
+                                messageRepository.save(Message.create(msg.username(), msg.content()));
+                                sessionManager.getSessions().stream()
+                                        .filter(s -> !s.getId().equals(session.getId()))
+                                        .forEach(s -> sendMessage(s, msg));
+                            }
                     );
         } catch (Exception e) {
             log.error("[handleTextMessage] Failed to parse TextMessage: [{}] from {}", message.getPayload(), session.getId(), e);
-            sendMessage(session, new Message("System", "Failed to parse message"));
+            sendMessage(session, new MessageDto("System", "Failed to parse message"));
         }
     }
 
-    private void sendMessage(WebSocketSession session, Message message) {
-        Serializer.serialize(message)
-                .ifPresent(serializedMessage -> proceedSendMessage(session, message, serializedMessage));
+    private void sendMessage(WebSocketSession session, MessageDto messageDto) {
+        Serializer.serialize(messageDto)
+                .ifPresent(serializedMessage -> proceedSendMessage(session, messageDto, serializedMessage));
     }
 
-    private void proceedSendMessage(WebSocketSession session, Message message, String serializedMessage) {
+    private void proceedSendMessage(WebSocketSession session, MessageDto messageDto, String serializedMessage) {
         try {
             session.sendMessage(new TextMessage(serializedMessage));
-            log.info("[sendMessage] Sent TextMessage: [{}] to {}", message, session.getId());
+            log.info("[sendMessage] Sent TextMessage: [{}] to {}", messageDto, session.getId());
         } catch (Exception e) {
-            log.error("[sendMessage] Failed to send TextMessage: [{}] to {}", message, session.getId(), e);
+            log.error("[sendMessage] Failed to send TextMessage: [{}] to {}", messageDto, session.getId(), e);
         }
     }
 }
