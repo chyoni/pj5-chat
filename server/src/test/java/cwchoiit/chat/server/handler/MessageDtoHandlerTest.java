@@ -1,7 +1,7 @@
 package cwchoiit.chat.server.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import cwchoiit.chat.server.dto.Message;
+import cwchoiit.chat.server.dto.MessageDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.ToString;
@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-class MessageHandlerTest {
+class MessageDtoHandlerTest {
 
     @LocalServerPort
     int port;
@@ -65,8 +65,8 @@ class MessageHandlerTest {
         Client leftSession = createClient(url);
         Client rightSession = createClient(url);
 
-        leftSession.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new Message("leftSession", "안녕하세요"))));
-        rightSession.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new Message("rightSession", "Hello"))));
+        leftSession.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new MessageDto("leftSession", "안녕하세요"))));
+        rightSession.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new MessageDto("rightSession", "Hello"))));
 
         String fromLeftMessage = rightSession.getQueue().poll(1, TimeUnit.SECONDS);
         String fromRightMessage = leftSession.getQueue().poll(1, TimeUnit.SECONDS);
@@ -87,9 +87,9 @@ class MessageHandlerTest {
         Client sessionTwo = createClient(url);
         Client sessionThree = createClient(url);
 
-        sessionOne.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new Message("sessionOne", "Hello1"))));
-        sessionTwo.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new Message("sessionTwo", "Hello2"))));
-        sessionThree.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new Message("sessionThree", "Hello3"))));
+        sessionOne.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new MessageDto("sessionOne", "Hello1"))));
+        sessionTwo.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new MessageDto("sessionTwo", "Hello2"))));
+        sessionThree.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new MessageDto("sessionThree", "Hello3"))));
 
         String sessionOneReceivedMessage = sessionOne.getQueue().poll(1, TimeUnit.SECONDS) + sessionOne.getQueue().poll(1, TimeUnit.SECONDS);
         String sessionTwoReceivedMessage = sessionTwo.getQueue().poll(1, TimeUnit.SECONDS) + sessionTwo.getQueue().poll(1, TimeUnit.SECONDS);
