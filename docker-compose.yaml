@@ -1,0 +1,15 @@
+name: pj5-chat
+
+services:
+  mysql:
+    hostname: pj5-chat-mysql
+    container_name: pj5-chat-mysql
+    image: mysql:8.0.38
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=chat
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./docker/data/mysql:/var/lib/mysql
