@@ -49,7 +49,7 @@ public class RestApiLoginAuthFilter extends AbstractAuthenticationProcessingFilt
 
         SecurityContext context = SecurityContextHolder.getContext();
         AppUserDetails principal = (AppUserDetails) authResult.getPrincipal();
-        principal.erasePassword();
+        principal.erasePassword(); // Redis Session에 저장할때 패스워드가 저장되지 않기 위해
         context.setAuthentication(authResult);
 
         HttpSessionSecurityContextRepository contextRepository = new HttpSessionSecurityContextRepository();
