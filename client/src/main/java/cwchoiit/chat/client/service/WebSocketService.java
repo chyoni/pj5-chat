@@ -1,15 +1,23 @@
 package cwchoiit.chat.client.service;
 
-import cwchoiit.chat.client.dto.Message;
+import cwchoiit.chat.client.dto.BaseRequest;
+import cwchoiit.chat.client.dto.KeepAliveRequest;
+import cwchoiit.chat.client.dto.MessageRequest;
 import cwchoiit.chat.client.handler.WebSocketReceiverHandler;
 import cwchoiit.chat.client.handler.WebSocketSenderHandler;
 import cwchoiit.chat.client.handler.WebSocketSessionHandler;
+import jakarta.websocket.ClientEndpointConfig;
 import jakarta.websocket.CloseReason;
 import jakarta.websocket.Session;
 import lombok.Setter;
 import org.glassfish.tyrus.client.ClientManager;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Provides functionality to establish, manage, and close a WebSocket connection.
@@ -42,24 +50,43 @@ public class WebSocketService {
     private WebSocketReceiverHandler receiverHandler;
     private Session session;
 
+    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+
     public WebSocketService(TerminalService terminalService, WebSocketSenderHandler senderHandler, String url, String endpoint) {
         this.terminalService = terminalService;
         this.senderHandler = senderHandler;
         this.webSocketUrl = "ws://" + url + endpoint;
     }
 
-    public void createSession() {
+    public boolean createSession(String sessionId) {
         ClientManager clientManager = ClientManager.createClient();
+
+        ClientEndpointConfig.Configurator configurator = new ClientEndpointConfig.Configurator() {
+            @Override
+            public void beforeRequest(Map<String, List<String>> headers) {
+                headers.put("Cookie", List.of("SESSION=" + sessionId));
+            }
+        };
+        ClientEndpointConfig clientEndpointConfig = ClientEndpointConfig.Builder.create().configurator(configurator).build();
+
         try {
-            session = clientManager.connectToServer(new WebSocketSessionHandler(terminalService), new URI(webSocketUrl));
+            session = clientManager.connectToServer(
+                    new WebSocketSessionHandler(terminalService, this),
+                    clientEndpointConfig,
+                    new URI(webSocketUrl)
+            );
             session.addMessageHandler(receiverHandler);
+            enableKeepAlive();
+            return true;
         } catch (Exception e) {
             terminalService.printSystemMessage("Failed to connect to server: " + webSocketUrl + ". error: " + e.getMessage());
+            return false;
         }
     }
 
     public void closeSession() {
         try {
+            disableKeepAlive();
             if (session != null) {
                 if (session.isOpen()) {
                     session.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Normal closure"));
@@ -71,11 +98,32 @@ public class WebSocketService {
         }
     }
 
-    public void sendMessage(Message message) {
+    public void sendMessage(BaseRequest request) {
         if (session != null && session.isOpen()) {
-            senderHandler.sendMessage(session, message);
+            senderHandler.sendMessage(session, request);
         } else {
-            terminalService.printSystemMessage("Failed to send message: " + message.content() + ". session is not open.");
+            terminalService.printSystemMessage("Failed to send message. message type is : " + request.getType() + ". reason: session is not open.");
+        }
+    }
+
+    private void enableKeepAlive() {
+        scheduledExecutorService.scheduleAtFixedRate(() ->
+                sendMessage(new KeepAliveRequest()),
+                1,
+                1,
+                TimeUnit.MINUTES
+        );
+    }
+
+    private void disableKeepAlive() {
+        scheduledExecutorService.shutdown();
+        try {
+            if (!scheduledExecutorService.awaitTermination(1, TimeUnit.SECONDS)) {
+                scheduledExecutorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduledExecutorService.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 }

@@ -6,12 +6,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
+import org.springframework.session.FlushMode;
 import org.springframework.session.data.redis.config.annotation.web.http.EnableRedisHttpSession;
 
 @Configuration
 @EnableRedisHttpSession(
         redisNamespace = "cwchoiit:chat:user:session",
-        maxInactiveIntervalInSeconds = 600
+        maxInactiveIntervalInSeconds = 600,
+        flushMode = FlushMode.IMMEDIATE // 속성을 변경하면 바로 변경내용 플러쉬
 )
 public class RedisSessionConfig {
 

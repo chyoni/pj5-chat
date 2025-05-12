@@ -1,12 +1,12 @@
 package cwchoiit.chat.client.handler;
 
-import cwchoiit.chat.client.dto.Message;
+import cwchoiit.chat.client.dto.BaseRequest;
+import cwchoiit.chat.client.dto.KeepAliveRequest;
+import cwchoiit.chat.client.dto.MessageRequest;
 import cwchoiit.chat.client.service.TerminalService;
 import cwchoiit.chat.serializer.Serializer;
 import jakarta.websocket.Session;
 import lombok.RequiredArgsConstructor;
-
-import java.io.IOException;
 
 /**
  * Handles sending WebSocket messages.
@@ -29,18 +29,25 @@ public class WebSocketSenderHandler {
 
     private final TerminalService terminalService;
 
-    public void sendMessage(Session session, Message message) {
+    public void sendMessage(Session session, BaseRequest request) {
         if (session != null && session.isOpen()) {
-            Serializer.serialize(message)
+            Serializer.serialize(request)
                     .ifPresent(serializedMessage -> processSendMessage(session, serializedMessage));
         }
     }
 
     private void processSendMessage(Session session, String serializedMessage) {
-        try {
-            session.getBasicRemote().sendText(serializedMessage);
-        } catch (IOException e) {
-            terminalService.printSystemMessage("Failed to send message: %s. error: %s".formatted(serializedMessage, e.getMessage()));
-        }
+        session.getAsyncRemote()
+                .sendText(
+                        serializedMessage,
+                        result -> {
+                            if (!result.isOK()) {
+                                terminalService.printSystemMessage(
+                                        "Failed to send message: %s. error: %s".formatted(serializedMessage, result.getException().getMessage())
+                                );
+                            }
+                        }
+                );
+
     }
 }
