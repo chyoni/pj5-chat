@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Optional;
 
 @Slf4j
@@ -23,6 +25,15 @@ public class Serializer {
         try {
             return Optional.of(objectMapper.readValue(payload, clazz));
         } catch (JsonProcessingException e) {
+            log.error("[deserialize] Failed to deserialize payload: {}", payload, e);
+            return Optional.empty();
+        }
+    }
+
+    public static <T> Optional<T> deserialize(InputStream payload, Class<T> clazz) {
+        try {
+            return Optional.of(objectMapper.readValue(payload, clazz));
+        } catch (Exception e) {
             log.error("[deserialize] Failed to deserialize payload: {}", payload, e);
             return Optional.empty();
         }

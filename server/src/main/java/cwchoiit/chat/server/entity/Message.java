@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
-import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Getter
@@ -14,7 +13,7 @@ import java.util.Objects;
 @ToString
 @Table(name = "message")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Message {
+public class Message extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,21 +26,10 @@ public class Message {
     @Column(name = "content", nullable = false)
     private String content;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
     public static Message create(String username, String content) {
         Message message = new Message();
         message.username = username;
         message.content = content;
-
-        LocalDateTime now = LocalDateTime.now();
-        message.createdAt = now;
-        message.updatedAt = now;
-
         return message;
     }
 
