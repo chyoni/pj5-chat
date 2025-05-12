@@ -13,3 +13,12 @@ services:
       - "3306:3306"
     volumes:
       - ./docker/data/mysql:/var/lib/mysql
+
+  redis:
+    hostname: pj5-chat-redis
+    container_name: pj5-chat-redis
+    image: redis:7.4
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./docker/data/redis:/data
