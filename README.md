@@ -19,13 +19,13 @@
 
 ## 🧰 기술 스택
 
-| 항목     | 내용                                                                                                   |
-|--------|------------------------------------------------------------------------------------------------------|
-| 언어     | Java 21                                                                                              |
-| 빌드 도구  | Gradle (Build, Multi Module)                                                                         |
-| 개발     | WebSocket, Spring Boot 3.4.5, Spring Kafka 3.3.5, Spring Data JPA 3.4.5,Docker (Redis, MySQL, Kafka) |
-| 데이터    | Redis 7.4, MySQL 8.0.38                                                                              |
-| 성능 테스트 | JMeter                                                                                               |
+| 항목     | 내용                                                                                                                                                            |
+|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 언어     | Java 21                                                                                                                                                       |
+| 빌드 도구  | Gradle (Build, Multi Module)                                                                                                                                  |
+| 개발     | WebSocket, Spring Boot 3.4.5, Spring Kafka 3.3.5, Spring Security 3.4.5, Spring Session Data Redis 3.4.3, Spring Data JPA 3.4.5, Docker (Redis, MySQL, Kafka) |
+| 데이터    | Redis 7.4, MySQL 8.0.38                                                                                                                                       |
+| 성능 테스트 | JMeter                                                                                                                                                        |
 
 ---
 
@@ -43,6 +43,8 @@
 ---
 
 ## 🏛️ Architecture
+
+**Soon...**
 
 [//]: # (![Architecture Preview]&#40;docs/archi.png&#41;)
 
