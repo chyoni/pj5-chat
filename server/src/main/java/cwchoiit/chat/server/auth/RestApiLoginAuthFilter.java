@@ -1,7 +1,6 @@
 package cwchoiit.chat.server.auth;
 
 import cwchoiit.chat.serializer.Serializer;
-import cwchoiit.chat.server.dto.LoginRequest;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,6 +17,8 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 public class RestApiLoginAuthFilter extends AbstractAuthenticationProcessingFilter {
 
@@ -55,9 +56,12 @@ public class RestApiLoginAuthFilter extends AbstractAuthenticationProcessingFilt
         HttpSessionSecurityContextRepository contextRepository = new HttpSessionSecurityContextRepository();
         contextRepository.saveContext(context, request, response);
 
+        String sessionId = request.getSession().getId();
+        String encodedSessionId = Base64.getEncoder().encodeToString(sessionId.getBytes(StandardCharsets.UTF_8));
+
         response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType(MediaType.TEXT_PLAIN_VALUE);
-        response.getWriter().write(request.getSession().getId());
+        response.getWriter().write(encodedSessionId);
         response.getWriter().flush();
     }
 
@@ -69,5 +73,8 @@ public class RestApiLoginAuthFilter extends AbstractAuthenticationProcessingFilt
         response.setContentType(MediaType.TEXT_PLAIN_VALUE);
         response.getWriter().write("Unauthorized");
         response.getWriter().flush();
+    }
+
+    public record LoginRequest(String username, String password) {
     }
 }

@@ -52,9 +52,10 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .addFilterAt(restApiLoginAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .authorizeHttpRequests(auth ->
-                        auth.requestMatchers("/api/v1/auth/login").permitAll()
-                                .anyRequest().authenticated()
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/auth/login").permitAll()
+                        .requestMatchers("/api/v1/user/register").permitAll()
+                        .anyRequest().authenticated()
                 )
                 .logout(logout ->
                         logout.logoutUrl("/api/v1/auth/logout").logoutSuccessHandler(this::logoutHandler)

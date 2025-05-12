@@ -1,6 +1,6 @@
 package cwchoiit.chat.client.handler;
 
-import cwchoiit.chat.client.dto.Message;
+import cwchoiit.chat.client.dto.MessageRequest;
 import cwchoiit.chat.client.service.TerminalService;
 import cwchoiit.chat.serializer.Serializer;
 import jakarta.websocket.MessageHandler;
@@ -30,7 +30,7 @@ public class WebSocketReceiverHandler implements MessageHandler.Whole<String> {
 
     @Override
     public void onMessage(String payload) {
-        Serializer.deserialize(payload, Message.class)
-                .ifPresent(message -> terminalService.printMessage(message.username(), message.content()));
+        Serializer.deserialize(payload, MessageRequest.class)
+                .ifPresent(message -> terminalService.printMessage(message.getUsername(), message.getContent()));
     }
 }
