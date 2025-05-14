@@ -115,6 +115,42 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         verify(userService, never()).findUsernameByUserId(anyLong());
     }
 
+    @Test
+    @DisplayName("주어진 inviteCode로 초대를 한 초대 상태가 NONE 이고, 초대자가 없는 유저인 경우 초대에 실패한다.")
+    void invite_failed6() {
+        when(userService.findUserByConnectionInviteCode(eq("code")))
+                .thenReturn(Optional.of(new UserReadResponse(2L, "partner")));
+
+        when(userService.findUsernameByUserId(eq(1L)))
+                .thenReturn(Optional.empty());
+
+        when(userConnectionRepository.findUserConnectionBy(anyLong(), anyLong()))
+                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, UserConnectionStatus.NONE)));
+
+        Pair<Optional<Long>, String> invalid = userConnectionService.invite(1L, "code");
+
+        assertThat(invalid.getSecond()).isEqualTo("inviter not found: 1");
+        assertThat(invalid.getFirst()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("주어진 inviteCode로 초대를 한 초대 상태가 DISCONNECTED 이고, 초대자가 없는 유저인 경우 초대에 실패한다.")
+    void invite_failed7() {
+        when(userService.findUserByConnectionInviteCode(eq("code")))
+                .thenReturn(Optional.of(new UserReadResponse(2L, "partner")));
+
+        when(userService.findUsernameByUserId(eq(1L)))
+                .thenReturn(Optional.empty());
+
+        when(userConnectionRepository.findUserConnectionBy(anyLong(), anyLong()))
+                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, UserConnectionStatus.DISCONNECTED)));
+
+        Pair<Optional<Long>, String> invalid = userConnectionService.invite(1L, "code");
+
+        assertThat(invalid.getSecond()).isEqualTo("inviter not found: 1");
+        assertThat(invalid.getFirst()).isEmpty();
+    }
+
     // 아래에서 Mock 객체로 테스트하고 있기 때문에, 실제 데이터베이스에 저장되는 것을 확인할 수 없음.
     // 여러가지 방법이 있겠지만, 이렇게 Captor를 사용해서 실제 가짜 Mock 객체인 userConnectionRepository이 save()가 실행될때 반환되는 객체를 캡쳐해서
     // 검증할 수 있음
