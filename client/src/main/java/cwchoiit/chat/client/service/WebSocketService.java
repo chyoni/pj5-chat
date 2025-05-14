@@ -2,7 +2,6 @@ package cwchoiit.chat.client.service;
 
 import cwchoiit.chat.client.dto.BaseRequest;
 import cwchoiit.chat.client.dto.KeepAliveRequest;
-import cwchoiit.chat.client.dto.MessageRequest;
 import cwchoiit.chat.client.handler.WebSocketReceiverHandler;
 import cwchoiit.chat.client.handler.WebSocketSenderHandler;
 import cwchoiit.chat.client.handler.WebSocketSessionHandler;
@@ -48,8 +47,34 @@ public class WebSocketService {
 
     @Setter
     private WebSocketReceiverHandler receiverHandler;
+    /**
+     * Represents the active WebSocket session.
+     * <p>
+     * This variable holds a reference to the current WebSocket session, enabling
+     * interaction with the server through WebSocket messages. It is involved in
+     * sending messages, receiving responses, and managing the session lifecycle.
+     * <p>
+     * Responsibilities:
+     * - Used to establish, maintain, and terminate the WebSocket connection.
+     * - Acts as a communication channel for sending and receiving messages.
+     * - Managed by methods such as `createSession`, `closeSession`, and `sendMessage`.
+     * <p>
+     * Lifecycle:
+     * - Initialized when a WebSocket connection is successfully established.
+     * - Set to null when the session is closed or invalidated.
+     * - Automatically configured with message handlers during the setup process.
+     * <p>
+     * Accessibility:
+     * - Private to ensure that session management is controlled internally within
+     * the class.
+     * - Interactions with the session are provided via public methods of the
+     * containing class.
+     */
     private Session session;
 
+    /**
+     * Scheduler for sending keep-alive messages to the server every minute.
+     */
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     public WebSocketService(TerminalService terminalService, WebSocketSenderHandler senderHandler, String url, String endpoint) {
@@ -58,9 +83,21 @@ public class WebSocketService {
         this.webSocketUrl = "ws://" + url + endpoint;
     }
 
+    /**
+     * Establishes a WebSocket session with the server using the provided session ID.
+     * <p>
+     * This method attempts to establish a WebSocket session, using the provided session ID
+     * to authenticate the connection via a "Cookie" header. If successful, the session is configured
+     * with message handlers and keep-alive functionality is enabled. Any errors encountered
+     * during this process will result in a failure message being printed to the terminal.
+     *
+     * @param sessionId the session ID used for authenticating the WebSocket connection
+     * @return true if the session was successfully established, false otherwise
+     */
     public boolean createSession(String sessionId) {
         ClientManager clientManager = ClientManager.createClient();
 
+        // WebSocket 연결하기 위해 로그인 시 받은 세션 ID를 HTTP Handshake 할 때 넣어준다
         ClientEndpointConfig.Configurator configurator = new ClientEndpointConfig.Configurator() {
             @Override
             public void beforeRequest(Map<String, List<String>> headers) {
@@ -70,11 +107,13 @@ public class WebSocketService {
         ClientEndpointConfig clientEndpointConfig = ClientEndpointConfig.Builder.create().configurator(configurator).build();
 
         try {
+            // WebSocket 연결 후 연결된 WebSocket 세션을 저장
             session = clientManager.connectToServer(
                     new WebSocketSessionHandler(terminalService, this),
                     clientEndpointConfig,
                     new URI(webSocketUrl)
             );
+            // WebSocket 세션에 메시지 핸들러 적용
             session.addMessageHandler(receiverHandler);
             enableKeepAlive();
             return true;
@@ -84,6 +123,17 @@ public class WebSocketService {
         }
     }
 
+    /**
+     * Closes the current WebSocket session and performs necessary cleanup actions.
+     * <p>
+     * This method disables the keep-alive functionality and ensures that the WebSocket
+     * session is properly closed, if it is open. If any errors occur while attempting
+     * to close the session, a system message is printed with the error details.
+     * <p>
+     * The session is set to null after closure to indicate that no active WebSocket
+     * connection exists. If the session is already null or not open, no additional
+     * actions are performed.
+     */
     public void closeSession() {
         try {
             disableKeepAlive();
@@ -98,6 +148,12 @@ public class WebSocketService {
         }
     }
 
+    /**
+     * Sends a message to the server through the WebSocket session.
+     * If the WebSocket session is not open, an error message is printed to the terminal.
+     *
+     * @param request the request containing the message data to be sent
+     */
     public void sendMessage(BaseRequest request) {
         if (session != null && session.isOpen()) {
             senderHandler.sendMessage(session, request);
@@ -106,15 +162,21 @@ public class WebSocketService {
         }
     }
 
+    /**
+     * Sends a keep-alive message to the server every minute.
+     */
     private void enableKeepAlive() {
         scheduledExecutorService.scheduleAtFixedRate(() ->
-                sendMessage(new KeepAliveRequest()),
+                        sendMessage(new KeepAliveRequest()),
                 1,
                 1,
                 TimeUnit.MINUTES
         );
     }
 
+    /**
+     * Stops the keep-alive message scheduler and shuts down the executor service.
+     */
     private void disableKeepAlive() {
         scheduledExecutorService.shutdown();
         try {

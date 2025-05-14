@@ -8,6 +8,28 @@ import lombok.RequiredArgsConstructor;
 import java.util.Map;
 import java.util.function.Function;
 
+/**
+ * Handles user commands and dispatches them to the appropriate services for processing.
+ * This class provides a mechanism to process commands such as registration, login, logout,
+ * and others by mapping command strings to specific handler methods. It communicates
+ * with underlying services to execute these commands and provides feedback to the user
+ * through the terminal service.
+ * <p>
+ * The {@code CommandHandler} relies on the following services:
+ * - {@code RestApiService} for interactions with a REST API to handle user authentication and account management.
+ * - {@code WebSocketService} for establishing and closing WebSocket connections.
+ * - {@code TerminalService} for displaying messages and interacting with the user interface.
+ * <p>
+ * Commands:
+ * - "register": Registers a new user.
+ * - "unregister": Unregisters the current user.
+ * - "login": Logs in the user.
+ * - "logout": Logs out the current user.
+ * - "clear": Clears the terminal.
+ * - "exit": Terminates the application.
+ * <p>
+ * The class also supports error handling for invalid or unrecognized commands.
+ */
 @RequiredArgsConstructor
 public class CommandHandler {
     private final RestApiService restApiService;
@@ -23,6 +45,13 @@ public class CommandHandler {
     );
 
 
+    /**
+     * Processes a user command and dispatches it to the appropriate service for processing.
+     *
+     * @param command  The command string to be processed. Must be a valid command.
+     * @param argument The optional argument string associated with the command. Cannot be empty.
+     * @return false if the command is logout, otherwise true.
+     */
     public boolean process(String command, String argument) {
         Function<String[], Boolean> commander = commands.getOrDefault(command, (ignored) -> {
             terminalService.printSystemMessage("Invalid command: %s".formatted(command));

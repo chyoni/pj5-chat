@@ -13,7 +13,7 @@ import org.springframework.session.data.redis.config.annotation.web.http.EnableR
 @EnableRedisHttpSession(
         redisNamespace = "cwchoiit:chat:user:session",
         maxInactiveIntervalInSeconds = 600,
-        flushMode = FlushMode.IMMEDIATE // 속성을 변경하면 바로 변경내용 플러쉬
+        flushMode = FlushMode.IMMEDIATE // 속성을 변경하면 바로 변경내용 플러쉬, 웹 소켓 요청이 들어와서 웹 소켓의 세션 유지 요청을 받으면 요청 처리 후 즉각 세션 만료 시간을 늘려주기 위해
 )
 public class RedisSessionConfig {
 
