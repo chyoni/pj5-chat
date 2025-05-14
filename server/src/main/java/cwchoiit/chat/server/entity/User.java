@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.util.Objects;
+import java.util.UUID;
 
 
 @Getter
@@ -27,11 +28,22 @@ public class User extends BaseEntity {
     @Column(name = "password", nullable = false)
     private String password;
 
+    @Column(name = "connection_invite_code", nullable = false)
+    private String connectionInviteCode;
+
+    @Column(name = "connection_count", nullable = false)
+    private int connectionCount;
+
     public static User create(String username, String password) {
         User user = new User();
         user.username = username;
         user.password = password;
+        user.connectionInviteCode = UUID.randomUUID().toString().replaceAll("-", "");
         return user;
+    }
+
+    public void changeConnectionCount(int count) {
+        this.connectionCount = count;
     }
 
     @Override
