@@ -7,6 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.support.HttpSessionHandshakeInterceptor;
@@ -14,6 +17,7 @@ import org.springframework.web.socket.server.support.HttpSessionHandshakeInterce
 import java.util.Map;
 
 import static cwchoiit.chat.server.constants.Constants.HTTP_SESSION_ID;
+import static cwchoiit.chat.server.constants.Constants.USER_ID;
 
 /**
  * This class is an implementation of {@link HttpSessionHandshakeInterceptor} responsible for intercepting
@@ -49,17 +53,23 @@ public class WebSocketHttpSessionHandshakeInterceptor extends HttpSessionHandsha
     public boolean beforeHandshake(@NonNull ServerHttpRequest request,
                                    @NonNull ServerHttpResponse response,
                                    @NonNull WebSocketHandler wsHandler,
-                                   @NonNull Map<String, Object> attributes) throws Exception {
+                                   @NonNull Map<String, Object> attributes) {
         if (request instanceof ServletServerHttpRequest servletServerHttpRequest) {
             HttpSession httpSession = servletServerHttpRequest.getServletRequest().getSession(false);
-            if (httpSession != null) { // 인증에 성공한 후 세션이 생성된 경우
-                attributes.put(HTTP_SESSION_ID.getValue(), httpSession.getId());
-                return true;
-            } else { // 인증 실패
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null) { // 인증 실패
+                log.error("[beforeHandshake] WebSocket handshake failed. Authentication is null. request: {}", servletServerHttpRequest.getServletRequest().getRequestURI());
+                return false;
+            }
+            if (httpSession == null) { // 세션이 없는 경우
                 log.warn("[beforeHandshake] WebSocket handshake failed. HttpSession is null. request: {}", servletServerHttpRequest.getServletRequest().getRequestURI());
                 response.setStatusCode(HttpStatus.UNAUTHORIZED);
                 return false;
             }
+            AppUserDetails userDetails = (AppUserDetails) authentication.getPrincipal();
+            attributes.put(HTTP_SESSION_ID.getValue(), httpSession.getId());
+            attributes.put(USER_ID.getValue(), userDetails.getUserId());
+            return true;
         } else { // Tomcat이 처리할 수 없는 요청인 경우
             log.warn("[beforeHandshake] WebSocket handshake failed. request is not ServletServerHttpRequest. request: {}", request.getURI());
             response.setStatusCode(HttpStatus.BAD_REQUEST);

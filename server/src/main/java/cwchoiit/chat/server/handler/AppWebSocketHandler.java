@@ -2,12 +2,8 @@ package cwchoiit.chat.server.handler;
 
 import cwchoiit.chat.serializer.Serializer;
 import cwchoiit.chat.server.constants.Constants;
-import cwchoiit.chat.server.entity.Message;
+import cwchoiit.chat.server.handler.adapter.RequestHandler;
 import cwchoiit.chat.server.handler.request.BaseRequest;
-import cwchoiit.chat.server.handler.request.KeepAliveRequest;
-import cwchoiit.chat.server.handler.request.MessageRequest;
-import cwchoiit.chat.server.repository.MessageRepository;
-import cwchoiit.chat.server.service.SessionService;
 import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -19,14 +15,15 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.util.List;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class MessageHandler extends TextWebSocketHandler {
+public class AppWebSocketHandler extends TextWebSocketHandler {
 
     private final WebSocketSessionManager sessionManager;
-    private final SessionService sessionService;
-    private final MessageRepository messageRepository;
+    private final List<? extends RequestHandler> requestHandlers;
 
     /**
      * Handles the establishment of a new WebSocket connection. Logs session details
@@ -56,26 +53,26 @@ public class MessageHandler extends TextWebSocketHandler {
         ConcurrentWebSocketSessionDecorator concurrentWebSocketSessionDecorator =
                 new ConcurrentWebSocketSessionDecorator(session, SEND_TIME_LIMIT, BUFFERED_SIZE_LIMIT);
 
-        sessionManager.storeSession(concurrentWebSocketSessionDecorator);
+        sessionManager.storeSession(findUserIdBySession(session), concurrentWebSocketSessionDecorator);
     }
 
     /**
      * Handles transport errors that occur during a WebSocket session.
      * Logs the error and terminates the affected session to manage resources and ensure stability.
      *
-     * @param session the WebSocket session during which the error occurred
+     * @param session   the WebSocket session during which the error occurred
      * @param exception the error that occurred during the session
      */
     @Override
     public void handleTransportError(WebSocketSession session, @NonNull Throwable exception) {
         log.error("[handleTransportError] [{}] session id: {}", exception.getMessage(), session.getId(), exception);
-        sessionManager.terminateSession(session.getId());
+        sessionManager.terminateSession(findUserIdBySession(session));
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, @NonNull CloseStatus status) {
         log.info("[afterConnectionClosed] [{}] session id: {}", status, session.getId());
-        sessionManager.terminateSession(session.getId());
+        sessionManager.terminateSession(findUserIdBySession(session));
     }
 
     @Override
@@ -83,31 +80,15 @@ public class MessageHandler extends TextWebSocketHandler {
         log.info("[handleTextMessage] Received TextMessage: [{}] from {}", message.getPayload(), session.getId());
         BaseRequest request = Serializer.deserialize(message.getPayload(), BaseRequest.class).orElseThrow();
 
-        switch (request) {
-            case MessageRequest messageRequest -> {
-                messageRepository.save(Message.create(messageRequest.getUsername(), messageRequest.getContent()));
-                sessionManager.getSessions().stream()
-                        .filter(s -> !s.getId().equals(session.getId()))
-                        .forEach(s -> sendMessage(s, messageRequest));
+        for (RequestHandler requestHandler : requestHandlers) {
+            if (requestHandler.isSupported(request.getType())) {
+                requestHandler.handle(request, session);
+                break;
             }
-            case KeepAliveRequest ignored -> sessionService.refreshTimeToLive(
-                    (String) session.getAttributes().get(Constants.HTTP_SESSION_ID.getValue())
-            );
-            default -> log.warn("[handleTextMessage] Unknown request type: {}", request);
         }
     }
 
-    private void sendMessage(WebSocketSession session, MessageRequest messageRequest) {
-        Serializer.serialize(messageRequest)
-                .ifPresent(serializedMessage -> proceedSendMessage(session, messageRequest, serializedMessage));
-    }
-
-    private void proceedSendMessage(WebSocketSession session, MessageRequest messageRequest, String serializedMessage) {
-        try {
-            session.sendMessage(new TextMessage(serializedMessage));
-            log.info("[sendMessage] Sent TextMessage: [{}] to {}", messageRequest, session.getId());
-        } catch (Exception e) {
-            log.error("[sendMessage] Failed to send TextMessage: [{}] to {}", messageRequest, session.getId(), e);
-        }
+    private Long findUserIdBySession(WebSocketSession session) {
+        return (Long) session.getAttributes().get(Constants.USER_ID.getValue());
     }
 }

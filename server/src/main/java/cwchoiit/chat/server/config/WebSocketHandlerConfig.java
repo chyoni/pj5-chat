@@ -1,7 +1,7 @@
 package cwchoiit.chat.server.config;
 
 import cwchoiit.chat.server.auth.WebSocketHttpSessionHandshakeInterceptor;
-import cwchoiit.chat.server.handler.MessageHandler;
+import cwchoiit.chat.server.handler.AppWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -14,7 +14,7 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
  * <p>
  * {@link WebSocketConfigurer}를 구현 -> registerWebSocketHandlers() 에서 WebSocket 핸들러를 등록하는 역할을 한다.
  * <p>
- * 이제부터, `/ws/v1/message/`라는 경로로 WebSocket 요청이 들어오면 내가 등록한 {@link MessageHandler}가 요청을 처리하게 된다.
+ * 이제부터, `/ws/v1/message/`라는 경로로 WebSocket 요청이 들어오면 내가 등록한 {@link AppWebSocketHandler}가 요청을 처리하게 된다.
  * 저 {@link WebSocketHttpSessionHandshakeInterceptor} 인터셉터는 WebSocket 연결 전에 HTTP Handshake 과정에서 세션 정보를 가로채기 위해 사용한다.
  * <p>
  * 왜 세션정보를 가로채냐면, 일단 이 채팅 프로그램에는 로그인한 사용자만 사용할 수 있고, 로그인을 하면 로그인 시 세션이 저장되는데 해당 세션은 HTTP 요청에 대한 세션이기 때문에
@@ -26,12 +26,12 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @RequiredArgsConstructor
 public class WebSocketHandlerConfig implements WebSocketConfigurer {
 
-    private final MessageHandler messageHandler;
+    private final AppWebSocketHandler appWebSocketHandler;
     private final WebSocketHttpSessionHandshakeInterceptor webSocketHttpSessionHandshakeInterceptor;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(messageHandler, "/ws/v1/message")
+        registry.addHandler(appWebSocketHandler, "/ws/v1/message")
                 .addInterceptors(webSocketHttpSessionHandshakeInterceptor);
     }
 }
