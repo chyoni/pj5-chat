@@ -2,7 +2,7 @@ package cwchoiit.chat.server.handler;
 
 import cwchoiit.chat.serializer.Serializer;
 import cwchoiit.chat.server.constants.Constants;
-import cwchoiit.chat.server.handler.adapter.RequestHandler;
+import cwchoiit.chat.server.handler.adapter.RequestHandlerDispatcher;
 import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.NonNull;
@@ -15,15 +15,13 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import java.util.List;
-
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class AppWebSocketHandler extends TextWebSocketHandler {
 
     private final WebSocketSessionManager sessionManager;
-    private final List<? extends RequestHandler> requestHandlers;
+    private final RequestHandlerDispatcher requestHandlerDispatcher;
 
     /**
      * Handles the establishment of a new WebSocket connection. Logs session details
@@ -80,12 +78,8 @@ public class AppWebSocketHandler extends TextWebSocketHandler {
         log.info("[handleTextMessage] Received TextMessage: [{}] from {}", message.getPayload(), session.getId());
         BaseRequest request = Serializer.deserialize(message.getPayload(), BaseRequest.class).orElseThrow();
 
-        for (RequestHandler requestHandler : requestHandlers) {
-            if (requestHandler.isSupported(request.getType())) {
-                requestHandler.handle(request, session);
-                break;
-            }
-        }
+        requestHandlerDispatcher.findHandler(request.getType())
+                .ifPresent(handler -> handler.handle(request, session));
     }
 
     private Long findUserIdBySession(WebSocketSession session) {

@@ -28,8 +28,8 @@ public class InviteRequestHandler implements RequestHandler {
     private final WebSocketSessionManager sessionManager;
 
     @Override
-    public boolean isSupported(String type) {
-        return type.equals(INVITE_REQUEST);
+    public String messageType() {
+        return INVITE_REQUEST;
     }
 
     @Override

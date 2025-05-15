@@ -22,8 +22,8 @@ public class MessageRequestHandler implements RequestHandler {
     private final WebSocketSessionManager sessionManager;
 
     @Override
-    public boolean isSupported(String type) {
-        return type.equals(MESSAGE);
+    public String messageType() {
+        return MESSAGE;
     }
 
     @Override

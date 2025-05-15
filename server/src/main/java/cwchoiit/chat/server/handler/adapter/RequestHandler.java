@@ -4,7 +4,7 @@ import cwchoiit.chat.server.handler.request.BaseRequest;
 import org.springframework.web.socket.WebSocketSession;
 
 public interface RequestHandler {
-    boolean isSupported(String type);
+    String messageType();
 
     void handle(BaseRequest request, WebSocketSession session);
 }
