@@ -1,0 +1,144 @@
+package cwchoiit.chat.server.service;
+
+import cwchoiit.chat.server.SpringBootTestConfiguration;
+import cwchoiit.chat.server.entity.User;
+import cwchoiit.chat.server.repository.UserRepository;
+import cwchoiit.chat.server.service.request.UserRegisterRequest;
+import cwchoiit.chat.server.service.response.UserReadResponse;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+@Transactional
+@SpringBootTest
+@DisplayName("Service - UserService")
+class UserServiceTest extends SpringBootTestConfiguration {
+
+    @MockitoBean
+    SessionService sessionService;
+
+    @MockitoSpyBean
+    UserRepository userRepository;
+
+    @MockitoSpyBean
+    PasswordEncoder passwordEncoder;
+
+    @Autowired
+    UserService userService;
+
+    @Test
+    @DisplayName("유저 생성이 정상적으로 수행된다.")
+    void createUser() {
+        Long userId = userService.createUser(new UserRegisterRequest("test", "test"));
+
+        verify(userRepository, times(1)).save(any(User.class));
+        verify(passwordEncoder, times(1)).encode(eq("test"));
+
+        User test = userRepository.findByUsername("test").orElseThrow();
+        assertThat(test).isNotNull();
+        assertThat(test.getUserId()).isEqualTo(userId);
+    }
+
+    @Test
+    @DisplayName("이미 있는 유저이름과 동일한 이름으로 생성 시도하는 경우, 유저 생성에 실패한다.")
+    void createUser_failed() {
+        userService.createUser(new UserRegisterRequest("test", "test"));
+        User test = userRepository.findByUsername("test").orElseThrow();
+
+        verify(passwordEncoder, times(1)).encode(eq("test"));
+        assertThat(test).isNotNull();
+
+        assertThatThrownBy(() -> userService.createUser(new UserRegisterRequest("test", "any")))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("유저 삭제가 정상적으로 수행된다.")
+    void removeUser() {
+        userRepository.save(User.create("test", "test"));
+        User saved = userRepository.findByUsername("test").orElseThrow();
+        assertThat(saved).isNotNull();
+        assertThat(saved.getUsername()).isEqualTo("test");
+
+        when(sessionService.findUsername()).thenReturn("test");
+
+        userService.removeUser();
+
+        verify(sessionService, times(1)).findUsername();
+        verify(userRepository, times(1)).delete(any(User.class));
+
+        boolean isEmpty = userRepository.findByUsername("test").isEmpty();
+        assertThat(isEmpty).isTrue();
+    }
+
+    @Test
+    @DisplayName("로그인 하지 않은 상태에서는 유저 삭제가 불가능하다.")
+    void removeUser_failed() {
+        assertThatThrownBy(() -> userService.removeUser()).isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("없는 유저를 삭제하려는 경우, 유저 삭제가 불가능하다.")
+    void removeUser_failed2() {
+        when(sessionService.findUsername()).thenReturn("test");
+        assertThatThrownBy(() -> userService.removeUser()).isInstanceOf(Exception.class);
+
+        verify(userRepository, never()).delete(any(User.class));
+    }
+
+    @Test
+    @DisplayName("유저 ID로 유저를 조회할 수 있다.")
+    void findUsernameByUserId() {
+        User save = userRepository.save(User.create("test", "test"));
+
+        String username = userService.findUsernameByUserId(save.getUserId()).orElseThrow();
+
+        assertThat(username).isEqualTo(save.getUsername());
+        assertThat(username).isEqualTo("test");
+
+        verify(userRepository, times(1)).findByUserId(eq(save.getUserId()));
+    }
+
+    @Test
+    @DisplayName("없는 유저 ID로 유저를 조회하는 경우, 유저가 조회되지 않는다.")
+    void findUsernameByUserId_failed() {
+        boolean empty = userService.findUsernameByUserId(1L).isEmpty();
+        assertThat(empty).isTrue();
+
+        verify(userRepository, times(1)).findByUserId(eq(1L));
+    }
+
+    @Test
+    @DisplayName("초대 코드로 유저를 정상적으로 찾을 수 있다.")
+    void findUserByConnectionInviteCode() {
+        User save = userRepository.save(User.create("test", "test"));
+
+        UserReadResponse userReadResponse = userService.findUserByConnectionInviteCode(save.getConnectionInviteCode()).orElseThrow();
+
+        assertThat(userReadResponse).isNotNull();
+        assertThat(userReadResponse.userId()).isEqualTo(save.getUserId());
+        assertThat(userReadResponse.username()).isEqualTo(save.getUsername());
+
+        verify(userRepository, times(1)).findByConnectionInviteCode(eq(save.getConnectionInviteCode()));
+    }
+
+    @Test
+    @DisplayName("없는 초대 코드로 유저를 찾을 경우, 유저를 찾지 못해야 한다.")
+    void findUserByConnectionInviteCode_failed() {
+        boolean empty = userService.findUserByConnectionInviteCode("any").isEmpty();
+
+        assertThat(empty).isTrue();
+        verify(userRepository, times(1)).findByConnectionInviteCode(eq("any"));
+    }
+}
