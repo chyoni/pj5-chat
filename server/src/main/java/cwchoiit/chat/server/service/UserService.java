@@ -45,6 +45,16 @@ public class UserService {
                 .map(User::getUsername);
     }
 
+    public Optional<Long> findUserIdByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .map(User::getUserId);
+    }
+
+    public Optional<String> findInviteCodeByUserId(Long userId) {
+        return userRepository.findByUserId(userId)
+                .map(User::getConnectionInviteCode);
+    }
+
     public Optional<UserReadResponse> findUserByConnectionInviteCode(String connectionInviteCode) {
         return userRepository.findByConnectionInviteCode(connectionInviteCode)
                 .map(UserReadResponse::of);

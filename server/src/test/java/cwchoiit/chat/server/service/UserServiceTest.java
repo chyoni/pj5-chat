@@ -120,6 +120,53 @@ class UserServiceTest extends SpringBootTestConfiguration {
     }
 
     @Test
+    @DisplayName("존재하는 유저이름으로 유저 ID를 찾으면, 유저가 조회된다.")
+    void findUserIdByUsername() {
+        User save = userRepository.save(User.create("test", "test"));
+
+        Long userId = userService.findUserIdByUsername(save.getUsername()).orElseThrow();
+
+        assertThat(userId).isNotNull();
+        assertThat(userId).isEqualTo(save.getUserId());
+
+        verify(userRepository, times(1)).findByUsername(eq(save.getUsername()));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 유저이름으로 유저 ID를 찾으면, 유저가 조회되지 않는다.")
+    void findUserIdByUsername_failed() {
+        boolean empty = userService.findUserIdByUsername("Invalid").isEmpty();
+
+        assertThat(empty).isTrue();
+
+        verify(userRepository, times(1)).findByUsername(eq("Invalid"));
+    }
+
+    @Test
+    @DisplayName("존재하는 유저 ID로 해당 유저의 초대 코드를 찾을 수 있다.")
+    void findConnectionInviteCodeByUserId() {
+        User newUser = User.create("test", "test");
+        userRepository.save(newUser);
+
+        String inviteCode = userService.findInviteCodeByUserId(newUser.getUserId()).orElseThrow();
+
+        assertThat(inviteCode).isNotNull();
+        assertThat(inviteCode).isEqualTo(newUser.getConnectionInviteCode());
+
+        verify(userRepository, times(1)).findByUserId(eq(newUser.getUserId()));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 유저 ID로 초대 코드를 찾는 경우, 초대 코드는 반환되지 않는다.")
+    void findConnectionInviteCodeByUserId_failed() {
+        boolean empty = userService.findInviteCodeByUserId(1L).isEmpty();
+
+        assertThat(empty).isTrue();
+
+        verify(userRepository, times(1)).findByUserId(eq(1L));
+    }
+
+    @Test
     @DisplayName("초대 코드로 유저를 정상적으로 찾을 수 있다.")
     void findUserByConnectionInviteCode() {
         User save = userRepository.save(User.create("test", "test"));
