@@ -3,6 +3,7 @@ package cwchoiit.chat.server.handler.adapter;
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.constants.Constants;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
+import cwchoiit.chat.server.handler.request.AcceptRequest;
 import cwchoiit.chat.server.handler.request.InviteRequest;
 import cwchoiit.chat.server.handler.request.KeepAliveRequest;
 import cwchoiit.chat.server.handler.request.MessageRequest;
@@ -55,6 +56,7 @@ class InviteRequestHandlerTest extends SpringBootTestConfiguration {
     void handle() {
         inviteRequestHandler.handle(new MessageRequest("test", "test"), mock(WebSocketSession.class));
         inviteRequestHandler.handle(new KeepAliveRequest(), mock(WebSocketSession.class));
+        inviteRequestHandler.handle(new AcceptRequest("inviter"), mock(WebSocketSession.class));
 
         verify(userConnectionService, never()).invite(anyLong(), anyString());
     }

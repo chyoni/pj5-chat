@@ -2,6 +2,7 @@ package cwchoiit.chat.server.handler.adapter;
 
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.constants.MessageType;
+import cwchoiit.chat.server.handler.request.AcceptRequest;
 import cwchoiit.chat.server.handler.request.InviteRequest;
 import cwchoiit.chat.server.handler.request.KeepAliveRequest;
 import cwchoiit.chat.server.handler.request.MessageRequest;
@@ -43,6 +44,7 @@ class KeepAliveRequestHandlerTest extends SpringBootTestConfiguration {
     void handle() {
         keepAliveRequestHandler.handle(new MessageRequest("test", "test"), mock(WebSocketSession.class));
         keepAliveRequestHandler.handle(new InviteRequest(""), mock(WebSocketSession.class));
+        keepAliveRequestHandler.handle(new AcceptRequest("inviter"), mock(WebSocketSession.class));
 
         verify(sessionService, never()).refreshTimeToLive(any());
     }

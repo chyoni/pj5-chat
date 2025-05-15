@@ -1,10 +1,12 @@
 package cwchoiit.chat.server.service;
 
 import cwchoiit.chat.server.SpringBootTestConfiguration;
-import cwchoiit.chat.server.constants.UserConnectionStatus;
+import cwchoiit.chat.server.entity.User;
 import cwchoiit.chat.server.entity.UserConnection;
 import cwchoiit.chat.server.repository.UserConnectionRepository;
+import cwchoiit.chat.server.repository.UserRepository;
 import cwchoiit.chat.server.service.response.UserReadResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -17,11 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+import static cwchoiit.chat.server.constants.UserConnectionStatus.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @Transactional
 @SpringBootTest
 @DisplayName("Service - UserConnectionService")
@@ -32,6 +37,9 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
 
     @MockitoSpyBean
     UserConnectionRepository userConnectionRepository;
+
+    @MockitoSpyBean
+    UserRepository userRepository;
 
     @Autowired
     UserConnectionService userConnectionService;
@@ -65,7 +73,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
                 .thenReturn(Optional.of("inviter"));
 
         when(userConnectionRepository.findUserConnectionBy(anyLong(), anyLong()))
-                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, UserConnectionStatus.ACCEPTED)));
+                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, ACCEPTED)));
 
         Pair<Optional<Long>, String> invalid = userConnectionService.invite(1L, "code");
 
@@ -85,7 +93,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
                 .thenReturn(Optional.of("inviter"));
 
         when(userConnectionRepository.findUserConnectionBy(anyLong(), anyLong()))
-                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, UserConnectionStatus.PENDING)));
+                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, PENDING)));
 
         Pair<Optional<Long>, String> invalid = userConnectionService.invite(1L, "code");
 
@@ -105,7 +113,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
                 .thenReturn(Optional.of("inviter"));
 
         when(userConnectionRepository.findUserConnectionBy(anyLong(), anyLong()))
-                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, UserConnectionStatus.REJECTED)));
+                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, REJECTED)));
 
         Pair<Optional<Long>, String> invalid = userConnectionService.invite(1L, "code");
 
@@ -125,7 +133,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
                 .thenReturn(Optional.empty());
 
         when(userConnectionRepository.findUserConnectionBy(anyLong(), anyLong()))
-                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, UserConnectionStatus.NONE)));
+                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, NONE)));
 
         Pair<Optional<Long>, String> invalid = userConnectionService.invite(1L, "code");
 
@@ -143,7 +151,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
                 .thenReturn(Optional.empty());
 
         when(userConnectionRepository.findUserConnectionBy(anyLong(), anyLong()))
-                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, UserConnectionStatus.DISCONNECTED)));
+                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, DISCONNECTED)));
 
         Pair<Optional<Long>, String> invalid = userConnectionService.invite(1L, "code");
 
@@ -175,7 +183,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
 
         verify(userConnectionRepository).save(connectionArgumentCaptor.capture());
         UserConnection captorValue = connectionArgumentCaptor.getValue();
-        assertThat(captorValue.getStatus()).isEqualTo(UserConnectionStatus.PENDING);
+        assertThat(captorValue.getStatus()).isEqualTo(PENDING);
         assertThat(captorValue.getInviterUserId()).isEqualTo(1L);
     }
 
@@ -189,7 +197,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
                 .thenReturn(Optional.of("inviter"));
 
         when(userConnectionRepository.findUserConnectionBy(anyLong(), anyLong()))
-                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, UserConnectionStatus.DISCONNECTED)));
+                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, DISCONNECTED)));
 
         Pair<Optional<Long>, String> invalid = userConnectionService.invite(1L, "code");
 
@@ -200,7 +208,226 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
 
         verify(userConnectionRepository).save(connectionArgumentCaptor.capture());
         UserConnection captorValue = connectionArgumentCaptor.getValue();
-        assertThat(captorValue.getStatus()).isEqualTo(UserConnectionStatus.PENDING);
+        assertThat(captorValue.getStatus()).isEqualTo(PENDING);
         assertThat(captorValue.getInviterUserId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 초대한 사람의 유저이름이 잘못된 경우 예외가 발생한다.")
+    void accept_failed() {
+        assertThatThrownBy(() -> userConnectionService.accept(1L, "Invalid"))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 초대한 사람과 초대받는 사람이 동일한 경우, 예외가 발생한다.")
+    void accept_failed2() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+
+        Pair<Optional<Long>, String> result = userConnectionService.accept(1L, "inviter");
+
+        assertThat(result.getFirst()).isEmpty();
+        assertThat(result.getSecond()).isEqualTo("Cannot accept self.");
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 데이터베이스에서 유저 커넥션 레코드를 가져왔을 때 실제 초대자와, 초대한 사람의 이름으로 유저를 찾았을 때 유저 정보가 다르다면 예외가 발생한다.")
+    void accept_failed3() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 2L, PENDING)));
+
+        Pair<Optional<Long>, String> result = userConnectionService.accept(2L, "inviter");
+
+        assertThat(result.getFirst()).isEmpty();
+        assertThat(result.getSecond()).isEqualTo("Invalid inviter's connection.");
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 초대 상태가 이미 ACCEPTED인 경우, 예외가 발생한다.")
+    void accept_failed4() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
+
+        Pair<Optional<Long>, String> result = userConnectionService.accept(2L, "inviter");
+
+        assertThat(result.getFirst()).isEmpty();
+        assertThat(result.getSecond()).isEqualTo("Already accepted.");
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 초대 상태가 REJECTED 라면, 예외가 발생한다.")
+    void accept_failed5() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, REJECTED)));
+
+        Pair<Optional<Long>, String> result = userConnectionService.accept(2L, "inviter");
+
+        assertThat(result.getFirst()).isEmpty();
+        assertThat(result.getSecond()).isEqualTo("Invalid status: " + REJECTED);
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 초대 상태가 NONE 이라면, 예외가 발생한다.")
+    void accept_failed6() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, NONE)));
+
+        Pair<Optional<Long>, String> result = userConnectionService.accept(2L, "inviter");
+
+        assertThat(result.getFirst()).isEmpty();
+        assertThat(result.getSecond()).isEqualTo("Invalid status: " + NONE);
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 초대 상태가 DISCONNECTED 이라면, 예외가 발생한다.")
+    void accept_failed7() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, DISCONNECTED)));
+
+        Pair<Optional<Long>, String> result = userConnectionService.accept(2L, "inviter");
+
+        assertThat(result.getFirst()).isEmpty();
+        assertThat(result.getSecond()).isEqualTo("Invalid status: " + DISCONNECTED);
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 초대 수락자가 없는 경우, 예외가 발생한다.")
+    void accept_failed8() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
+
+        when(userService.findUsernameByUserId(eq(2L)))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 파트너 A 유저를 비관적 락을 통해 가져올 때 예외가 발생한 경우, 초대 수락에 실패한다.")
+    void accept_failed9() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
+
+        when(userRepository.findLockByUserId(eq(1L))).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 파트너 B 유저를 비관적 락을 통해 가져올 때 예외가 발생한 경우, 초대 수락에 실패한다.")
+    void accept_failed10() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
+
+        when(userRepository.findLockByUserId(eq(2L))).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 파트너 A, 파트너 B, 초대 상태 PENDING인 레코드를 찾지 못한 경우, 예외가 발생한다.")
+    void accept_failed11() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
+        when(userService.findUsernameByUserId(eq(2L))).thenReturn(Optional.of("acceptor"));
+
+        User partnerA = User.create("inviter", "inviter");
+        User partnerB = User.create("acceptor", "acceptor");
+        partnerA.changeConnectionCount(50000);
+
+        when(userRepository.findLockByUserId(1L)).thenReturn(Optional.of(partnerA));
+        when(userRepository.findLockByUserId(2L)).thenReturn(Optional.of(partnerB));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING)))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 파트너 A의 초대 수 제한이 초과한 경우, 초대 수락에 실패한다.")
+    void accept_failed12() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
+        when(userService.findUsernameByUserId(eq(2L))).thenReturn(Optional.of("acceptor"));
+
+        User partnerA = User.create("inviter", "inviter");
+        User partnerB = User.create("acceptor", "acceptor");
+        partnerA.changeConnectionCount(50000);
+
+        when(userRepository.findLockByUserId(1L)).thenReturn(Optional.of(partnerA));
+        when(userRepository.findLockByUserId(2L)).thenReturn(Optional.of(partnerB));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
+
+        assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Connection count limit exceeded");
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 파트너 B의 초대 수 제한이 초과한 경우, 초대 수락에 실패한다.")
+    void accept_failed13() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
+        when(userService.findUsernameByUserId(eq(2L))).thenReturn(Optional.of("acceptor"));
+
+        User partnerA = User.create("inviter", "inviter");
+        User partnerB = User.create("acceptor", "acceptor");
+        partnerB.changeConnectionCount(50000);
+
+        when(userRepository.findLockByUserId(1L)).thenReturn(Optional.of(partnerA));
+        when(userRepository.findLockByUserId(2L)).thenReturn(Optional.of(partnerB));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
+
+        assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Connection count limit exceeded");
+    }
+
+    @Test
+    @DisplayName("초대 수락 - 모든 검증에 통과한 경우, 초대 수락에 성공한다.")
+    void accept_success() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
+        when(userService.findUsernameByUserId(eq(2L))).thenReturn(Optional.of("acceptor"));
+
+        User partnerA = User.create("inviter", "inviter");
+        User partnerB = User.create("acceptor", "acceptor");
+
+        when(userRepository.findLockByUserId(1L)).thenReturn(Optional.of(partnerA));
+        when(userRepository.findLockByUserId(2L)).thenReturn(Optional.of(partnerB));
+
+        UserConnection userConnection = UserConnection.create(1L, 2L, 1L, PENDING);
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING)))
+                .thenReturn(Optional.of(userConnection));
+
+        Pair<Optional<Long>, String> result = userConnectionService.accept(2L, "inviter");
+
+        assertThat(result.getFirst()).isEqualTo(Optional.of(1L));
+        assertThat(result.getSecond()).isEqualTo("acceptor");
+
+        assertThat(partnerA.getConnectionCount()).isEqualTo(1);
+        assertThat(partnerB.getConnectionCount()).isEqualTo(1);
+        assertThat(userConnection.getStatus()).isEqualTo(ACCEPTED);
     }
 }
