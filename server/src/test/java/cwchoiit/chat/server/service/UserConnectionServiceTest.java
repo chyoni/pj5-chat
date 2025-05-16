@@ -496,8 +496,10 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
 
         when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
                 .thenReturn(Optional.of(UserConnection.create(1L, 2L, 2L, PENDING)));
+        when(userConnectionRepository.findUserConnectionBy(eq(2L), eq(1L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 2L, PENDING)));
 
-        Pair<Boolean, String> result = userConnectionService.reject(1L, "inviter");
+        Pair<Boolean, String> result = userConnectionService.reject(2L, "inviter");
 
         assertThat(result.getFirst()).isFalse();
         assertThat(result.getSecond()).isEqualTo("Invalid inviter's connection.");
