@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import static cwchoiit.chat.server.constants.MessageType.ACCEPT_REQUEST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -43,7 +44,7 @@ class AcceptRequestHandlerTest extends SpringBootTestConfiguration {
     @DisplayName("AcceptRequestHandler는 MessageType이 [ACCEPT_REQUEST]일때 처리할 수 있다.")
     void messageType() {
         String messageType = acceptRequestHandler.messageType();
-        assertThat(messageType).isEqualTo("ACCEPT_REQUEST");
+        assertThat(messageType).isEqualTo(ACCEPT_REQUEST);
     }
 
     @Test

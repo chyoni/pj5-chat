@@ -108,4 +108,19 @@ class BaseRequestTest {
         RejectRequest rejectRequest = (RejectRequest) baseRequest;
         assertThat(rejectRequest.getInviterUsername()).isEqualTo("inviter");
     }
+
+    @Test
+    @DisplayName("BaseRequest 클래스가 DISCONNECT_REQUEST 타입으로 메시지가 들어오는 경우 역직렬화 정상 처리")
+    void deserialize8() {
+        BaseRequest baseRequest = Serializer.deserialize(
+                "{\"type\":\"DISCONNECT_REQUEST\", \"peerUsername\": \"peer\"}",
+                BaseRequest.class
+        ).orElseThrow();
+
+        assertThat(baseRequest.getType()).isEqualTo(DISCONNECT_REQUEST);
+        assertThat(baseRequest).isInstanceOf(DisconnectRequest.class);
+
+        DisconnectRequest disconnectRequest = (DisconnectRequest) baseRequest;
+        assertThat(disconnectRequest.getPeerUsername()).isEqualTo("peer");
+    }
 }

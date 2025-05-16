@@ -49,6 +49,10 @@ class RequestHandlerDispatcherTest extends SpringBootTestConfiguration {
         RequestHandler requestHandler7 = requestHandlerDispatcher.findHandler(MessageType.REJECT_REQUEST).orElseThrow();
         assertThat(requestHandler7).isNotNull();
         assertThat(requestHandler7).isInstanceOf(RejectRequestHandler.class);
+
+        RequestHandler requestHandler8 = requestHandlerDispatcher.findHandler(MessageType.DISCONNECT_REQUEST).orElseThrow();
+        assertThat(requestHandler8).isNotNull();
+        assertThat(requestHandler8).isInstanceOf(DisconnectRequestHandler.class);
     }
 
     @Test
