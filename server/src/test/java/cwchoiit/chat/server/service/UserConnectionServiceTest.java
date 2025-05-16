@@ -159,6 +159,46 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         assertThat(invalid.getFirst()).isEmpty();
     }
 
+    @Test
+    @DisplayName("주어진 inviteCode로 초대 요청에 대한 상태가 최초(NONE)이지만, 초대자의 초대 제한 횟수가 최대값을 초과한 경우 초대에 실패한다.")
+    void invite_failed8() {
+        when(userService.findUserByConnectionInviteCode(eq("code")))
+                .thenReturn(Optional.of(new UserReadResponse(2L, "partner")));
+
+        when(userService.findUsernameByUserId(eq(1L)))
+                .thenReturn(Optional.of("inviter"));
+
+        when(userConnectionRepository.findUserConnectionBy(anyLong(), anyLong()))
+                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, NONE)));
+
+        when(userService.findConnectionCountByUserId(1L)).thenReturn(Optional.of(5000000));
+
+        Pair<Optional<Long>, String> result = userConnectionService.invite(1L, "code");
+
+        assertThat(result.getFirst()).isEmpty();
+        assertThat(result.getSecond()).isEqualTo("Connection count limit exceeded.");
+    }
+
+    @Test
+    @DisplayName("주어진 inviteCode로 초대 요청에 대한 상태가 최초(DISCONNECTED)이지만, 초대자의 초대 제한 횟수가 최대값을 초과한 경우 초대에 실패한다.")
+    void invite_failed9() {
+        when(userService.findUserByConnectionInviteCode(eq("code")))
+                .thenReturn(Optional.of(new UserReadResponse(2L, "partner")));
+
+        when(userService.findUsernameByUserId(eq(1L)))
+                .thenReturn(Optional.of("inviter"));
+
+        when(userConnectionRepository.findUserConnectionBy(anyLong(), anyLong()))
+                .thenReturn(Optional.of(UserConnection.create(2L, 1L, 1L, DISCONNECTED)));
+
+        when(userService.findConnectionCountByUserId(1L)).thenReturn(Optional.of(5000000));
+
+        Pair<Optional<Long>, String> result = userConnectionService.invite(1L, "code");
+
+        assertThat(result.getFirst()).isEmpty();
+        assertThat(result.getSecond()).isEqualTo("Connection count limit exceeded.");
+    }
+
     // 아래에서 Mock 객체로 테스트하고 있기 때문에, 실제 데이터베이스에 저장되는 것을 확인할 수 없음.
     // 여러가지 방법이 있겠지만, 이렇게 Captor를 사용해서 실제 가짜 Mock 객체인 userConnectionRepository이 save()가 실행될때 반환되는 객체를 캡쳐해서
     // 검증할 수 있음
@@ -429,5 +469,71 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         assertThat(partnerA.getConnectionCount()).isEqualTo(1);
         assertThat(partnerB.getConnectionCount()).isEqualTo(1);
         assertThat(userConnection.getStatus()).isEqualTo(ACCEPTED);
+    }
+
+    @Test
+    @DisplayName("초대 거절 - 초대자의 이름으로 초대자를 찾았을 때, 찾지 못한 경우, 예외를 반환한다.")
+    void reject_failed() {
+        assertThatThrownBy(() -> userConnectionService.reject(1L, "Invalid"))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("초대 거절 - 초대자와 거절하는 사람이 동일한 ID인 경우, 초대 거절에 실패한다.")
+    void reject_failed2() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+
+        Pair<Boolean, String> result = userConnectionService.reject(1L, "inviter");
+
+        assertThat(result.getFirst()).isFalse();
+        assertThat(result.getSecond()).isEqualTo("Invalid inviter's connection.");
+    }
+
+    @Test
+    @DisplayName("초대 거절 - 초대 거절 시, 초대자의 이름으로 찾은 초대자의 ID와 두 유저간 커넥션의 실 초대자가 다른 경우, 초대 거절에 실패한다.")
+    void reject_failed3() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 2L, PENDING)));
+
+        Pair<Boolean, String> result = userConnectionService.reject(1L, "inviter");
+
+        assertThat(result.getFirst()).isFalse();
+        assertThat(result.getSecond()).isEqualTo("Invalid inviter's connection.");
+    }
+
+    @Test
+    @DisplayName("초대 거절 - 초대 거절 시, 초대 상태가 PENDING이 아니라면 초대 거절에 실패한다.")
+    void reject_failed4() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
+
+        Pair<Boolean, String> result = userConnectionService.reject(2L, "inviter");
+
+        assertThat(result.getFirst()).isFalse();
+        assertThat(result.getSecond()).isEqualTo("Invalid status: " + ACCEPTED);
+    }
+
+    @Test
+    @DisplayName("초대 거절 - 초대 거절에 성공한다.")
+    void reject_success() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));
+
+        UserConnection userConnection = UserConnection.create(1L, 2L, 1L, PENDING);
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(userConnection));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(2L), eq(1L)))
+                .thenReturn(Optional.of(userConnection));
+
+        Pair<Boolean, String> result = userConnectionService.reject(2L, "inviter");
+
+        assertThat(result.getFirst()).isTrue();
+        assertThat(result.getSecond()).isEqualTo("inviter");
+
+        assertThat(userConnection.getStatus()).isEqualTo(REJECTED);
     }
 }

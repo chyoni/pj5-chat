@@ -167,6 +167,27 @@ class UserServiceTest extends SpringBootTestConfiguration {
     }
 
     @Test
+    @DisplayName("유저 ID로 커넥션 횟수를 가져올 수 있다.")
+    void findConnectionCountByUserId() {
+        User save = userRepository.save(User.create("test", "test"));
+
+        Integer connectionCount = userService.findConnectionCountByUserId(save.getUserId()).orElseThrow();
+
+        assertThat(connectionCount).isNotNull();
+        assertThat(connectionCount).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("없는 유저 ID로 커넥션 횟수를 가져오지 못한다.")
+    void findConnectionCountByUserId_failed() {
+        boolean empty = userService.findConnectionCountByUserId(1L).isEmpty();
+
+        assertThat(empty).isTrue();
+
+        verify(userRepository, times(1)).findByUserId(eq(1L));
+    }
+
+    @Test
     @DisplayName("초대 코드로 유저를 정상적으로 찾을 수 있다.")
     void findUserByConnectionInviteCode() {
         User save = userRepository.save(User.create("test", "test"));

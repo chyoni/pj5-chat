@@ -5,6 +5,7 @@ import cwchoiit.chat.server.entity.User;
 import cwchoiit.chat.server.entity.UserConnection;
 import cwchoiit.chat.server.repository.UserConnectionRepository;
 import cwchoiit.chat.server.repository.UserRepository;
+import cwchoiit.chat.server.repository.projection.UserIdWithName;
 import cwchoiit.chat.server.service.response.UserReadResponse;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,9 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static cwchoiit.chat.server.constants.UserConnectionStatus.*;
 
@@ -32,6 +35,21 @@ public class UserConnectionService {
     @Setter
     private int LIMIT_CONNECTION_COUNT = 1_000;
 
+    public List<UserReadResponse> findConnectionUsersByStatus(Long userId, UserConnectionStatus status) {
+        List<UserIdWithName> partnerASide = userConnectionRepository.findAllUserConnectionByPartnerAUserId(
+                userId,
+                status.name()
+        );
+        List<UserIdWithName> partnerBSide = userConnectionRepository.findAllUserConnectionByPartnerBUserId(
+                userId,
+                status.name()
+        );
+
+        return Stream.concat(partnerASide.stream(), partnerBSide.stream())
+                .map(UserReadResponse::of)
+                .toList();
+    }
+
     @Transactional
     public Pair<Optional<Long>, String> invite(Long inviterUserId, String inviteCode) {
         UserReadResponse partner = userService.findUserByConnectionInviteCode(inviteCode).orElse(null);
@@ -47,6 +65,9 @@ public class UserConnectionService {
         UserConnectionStatus status = findStatus(inviterUserId, partner.userId());
         return switch (status) {
             case NONE, DISCONNECTED -> {
+                if (userService.findConnectionCountByUserId(inviterUserId).orElse(0) >= LIMIT_CONNECTION_COUNT) {
+                    yield Pair.of(Optional.empty(), "Connection count limit exceeded.");
+                }
                 String inviterUsername = userService.findUsernameByUserId(inviterUserId).orElse(null);
                 if (inviterUsername == null) {
                     log.error("[invite] inviter not found: {}", inviterUserId);
@@ -89,6 +110,32 @@ public class UserConnectionService {
         accept(inviterUserId, acceptorUserId);
 
         return Pair.of(Optional.of(inviterUserId), acceptorUsername);
+    }
+
+    @Transactional
+    public Pair<Boolean, String> reject(Long declinerId, String inviterUsername) {
+        Long inviterUserId = userService.findUserIdByUsername(inviterUsername).orElseThrow();
+
+        if (inviterUserId.equals(declinerId)) {
+            log.error("[reject] Invalid inviter's connection.");
+            return Pair.of(false, "Invalid inviter's connection.");
+        }
+
+        if (!findInviterUserId(inviterUserId, declinerId).equals(inviterUserId)) {
+            log.error("[reject] Invalid inviter's connection.");
+            return Pair.of(false, "Invalid inviter's connection.");
+        }
+
+        UserConnectionStatus status = findStatus(inviterUserId, declinerId);
+        if (status != PENDING) {
+            log.error("[reject] Invalid status: {}", status);
+            return Pair.of(false, "Invalid status: " + status);
+        }
+
+        UserConnection userConnection = userConnectionRepository.findUserConnectionBy(declinerId, inviterUserId).orElseThrow();
+        userConnection.changeStatus(REJECTED);
+
+        return Pair.of(true, inviterUsername);
     }
 
     private void accept(Long inviterId, Long acceptorId) {

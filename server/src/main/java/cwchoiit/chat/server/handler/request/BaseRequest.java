@@ -22,7 +22,10 @@ import lombok.RequiredArgsConstructor;
         @JsonSubTypes.Type(value = MessageRequest.class, name = MessageType.MESSAGE), // 위에서 명시한 "type"의 값이 "MESSAGE"라면 MessageRequest로 역직렬화
         @JsonSubTypes.Type(value = KeepAliveRequest.class, name = MessageType.KEEP_ALIVE), // 위에서 명시한 "type"의 값이 "KEEP_ALIVE"라면 KeepAliveRequest로 역직렬화
         @JsonSubTypes.Type(value = InviteRequest.class, name = MessageType.INVITE_REQUEST), // 위에서 명시한 "type"의 값이 "INVITE_REQUEST"라면 InviteRequest로 역직렬화
-        @JsonSubTypes.Type(value = AcceptRequest.class, name = MessageType.ACCEPT_REQUEST) // 위에서 명시한 "type"의 값이 "ACCEPT_REQUEST"라면 InviteRequest로 역직렬화
+        @JsonSubTypes.Type(value = AcceptRequest.class, name = MessageType.ACCEPT_REQUEST), // 위에서 명시한 "type"의 값이 "ACCEPT_REQUEST"라면 AcceptRequest로 역직렬화
+        @JsonSubTypes.Type(value = RejectRequest.class, name = MessageType.REJECT_REQUEST), // 위에서 명시한 "type"의 값이 "REJECT_REQUEST"라면 RejectRequest로 역직렬화
+        @JsonSubTypes.Type(value = FetchUserInviteCodeRequest.class, name = MessageType.FETCH_USER_INVITE_CODE_REQUEST), // 위에서 명시한 "type"의 값이 "FETCH_USER_INVITE_CODE_REQUEST"라면 FetchUserInviteCodeRequest로 역직렬화
+        @JsonSubTypes.Type(value = FetchConnectionsRequest.class, name = MessageType.FETCH_CONNECTIONS_REQUEST) // 위에서 명시한 "type"의 값이 "FETCH_CONNECTIONS_REQUEST"라면 FetchConnectionsRequest 역직렬화
 })
 @RequiredArgsConstructor
 public abstract class BaseRequest {

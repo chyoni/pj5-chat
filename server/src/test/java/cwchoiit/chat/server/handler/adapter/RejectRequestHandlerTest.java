@@ -1,0 +1,99 @@
+package cwchoiit.chat.server.handler.adapter;
+
+import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.MessageType;
+import cwchoiit.chat.server.constants.UserConnectionStatus;
+import cwchoiit.chat.server.handler.request.*;
+import cwchoiit.chat.server.handler.response.ErrorResponse;
+import cwchoiit.chat.server.handler.response.RejectResponse;
+import cwchoiit.chat.server.service.UserConnectionService;
+import cwchoiit.chat.server.session.WebSocketSessionManager;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.util.Pair;
+import org.springframework.web.socket.WebSocketSession;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("Handler Adapter - RejectRequestHandler")
+class RejectRequestHandlerTest {
+
+    @Mock
+    UserConnectionService userConnectionService;
+
+    @Mock
+    WebSocketSessionManager sessionManager;
+
+    @InjectMocks
+    RejectRequestHandler rejectRequestHandler;
+
+    @Test
+    @DisplayName("RejectRequestHandler는 MessageType이 [REJECT_REQUEST]일때 처리할 수 있다.")
+    void messageType() {
+        String messageType = rejectRequestHandler.messageType();
+        assertThat(messageType).isEqualTo(MessageType.REJECT_REQUEST);
+    }
+
+    @Test
+    @DisplayName("RejectRequestHandler는 BaseRequest 인스턴스 타입이 RejectRequest 일때 처리할 수 있다.")
+    void handle() {
+        rejectRequestHandler.handle(new KeepAliveRequest(), mock(WebSocketSession.class));
+        rejectRequestHandler.handle(new InviteRequest(""), mock(WebSocketSession.class));
+        rejectRequestHandler.handle(new AcceptRequest("inviter"), mock(WebSocketSession.class));
+        rejectRequestHandler.handle(new MessageRequest("inviter", "message"), mock(WebSocketSession.class));
+        rejectRequestHandler.handle(new FetchConnectionsRequest(UserConnectionStatus.REJECTED), mock(WebSocketSession.class));
+        rejectRequestHandler.handle(new FetchUserInviteCodeRequest(), mock(WebSocketSession.class));
+
+        verify(userConnectionService, never()).reject(anyLong(), anyString());
+    }
+
+    @Test
+    @DisplayName("RejectRequest가 들어오면, 로직이 수행된다 - 정상 케이스")
+    void handle_success() {
+        WebSocketSession mocked = mock(WebSocketSession.class);
+
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put(Constants.USER_ID.getValue(), 1L);
+
+        when(mocked.getAttributes()).thenReturn(attributes);
+
+        RejectRequest rejectRequest = new RejectRequest("inviter");
+        when(userConnectionService.reject(eq(1L), eq(rejectRequest.getInviterUsername())))
+                .thenReturn(Pair.of(true, rejectRequest.getInviterUsername()));
+
+        rejectRequestHandler.handle(rejectRequest, mocked);
+
+        verify(sessionManager, times(1))
+                .sendMessage(eq(mocked), any(RejectResponse.class));
+    }
+
+    @Test
+    @DisplayName("RejectRequest가 들어오면, 로직이 수행된다 - 실패 케이스")
+    void handle_failed() {
+        WebSocketSession mocked = mock(WebSocketSession.class);
+
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put(Constants.USER_ID.getValue(), 1L);
+
+        when(mocked.getAttributes()).thenReturn(attributes);
+
+        RejectRequest rejectRequest = new RejectRequest("inviter");
+        when(userConnectionService.reject(eq(1L), eq(rejectRequest.getInviterUsername())))
+                .thenReturn(Pair.of(false, "Error Message"));
+
+        rejectRequestHandler.handle(rejectRequest, mocked);
+
+        verify(sessionManager, times(1))
+                .sendMessage(eq(mocked), any(ErrorResponse.class));
+    }
+}
