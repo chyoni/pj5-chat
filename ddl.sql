@@ -13,7 +13,7 @@ create table if not exists user
     username               varchar(30)  not null unique comment '유저명',
     password               varchar(255) not null comment '패스워드',
     connection_invite_code varchar(30)  not null unique comment '초대 코드',
-    connection_count       int          not null comment '연결 횟수',
+    connection_count       int          not null comment '현재 연결된 커넥션 수',
     created_at             datetime     not null comment '생성 일자',
     updated_at             datetime     not null comment '수정 일자'
 );

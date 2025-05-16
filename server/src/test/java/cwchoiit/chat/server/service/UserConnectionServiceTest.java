@@ -538,4 +538,212 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
 
         assertThat(userConnection.getStatus()).isEqualTo(REJECTED);
     }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 해제 대상 유저 이름으로 유저를 찾지 못하면 연결 해제에 실패한다.")
+    void disconnect_failed() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.empty());
+
+        Pair<Boolean, String> result = userConnectionService.disconnect(1L, peerUsername);
+
+        assertThat(result.getFirst()).isFalse();
+        assertThat(result.getSecond()).isEqualTo("Peer not found.");
+    }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 해제 대상 유저 이름으로 유저를 찾았을 때, 해당 유저가 연결 해제 요청한 유저와 동일한 경우 연결 해제에 실패한다.")
+    void disconnect_failed2() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.of(1L));
+
+        Pair<Boolean, String> result = userConnectionService.disconnect(1L, peerUsername);
+
+        assertThat(result.getFirst()).isFalse();
+        assertThat(result.getSecond()).isEqualTo("Peer not found.");
+    }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 상태가 ACCEPTED, REJECTED가 아닌 경우엔, 연결 해제에 실패한다.")
+    void disconnect_failed3() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
+
+        Pair<Boolean, String> result = userConnectionService.disconnect(2L, peerUsername);
+
+        assertThat(result.getFirst()).isFalse();
+        assertThat(result.getSecond()).isEqualTo("Disconnect failed.");
+    }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 상태가 ACCEPTED인 경우, 연결 해제를 시도하지만, ID를 통해 파트너 A를 찾지 못한 경우, 예외가 발생한다.")
+    void disconnect_failed4() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
+
+        when(userRepository.findLockByUserId(eq(1L))).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userConnectionService.disconnect(2L, peerUsername))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 상태가 ACCEPTED인 경우, 연결 해제를 시도하지만, ID를 통해 파트너 B를 찾지 못한 경우, 예외가 발생한다.")
+    void disconnect_failed5() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
+
+        when(userRepository.findLockByUserId(eq(2L))).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userConnectionService.disconnect(2L, peerUsername))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 상태가 ACCEPTED인 경우, 연결 해제를 시도하지만, 데이터베이스에서 두 유저의 연결 상태가 ACCEPTED인 연결을 찾지못하면, 예외가 발생한다.")
+    void disconnect_failed6() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
+
+        when(userRepository.findLockByUserId(eq(1L))).thenReturn(Optional.of(User.create("peer", "peer")));
+        when(userRepository.findLockByUserId(eq(2L))).thenReturn(Optional.of(User.create("caller", "caller")));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED)))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userConnectionService.disconnect(2L, peerUsername))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 상태가 ACCEPTED인 경우, 연결 해제를 시도하지만, 파트너 A의 현재 연결 수가 0이라면 예외가 발생한다.")
+    void disconnect_failed7() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
+
+        User partnerA = User.create("peer", "peer");
+        User partnerB = User.create("caller", "caller");
+
+        when(userRepository.findLockByUserId(eq(1L))).thenReturn(Optional.of(partnerA));
+        when(userRepository.findLockByUserId(eq(2L))).thenReturn(Optional.of(partnerB));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
+
+        assertThatThrownBy(() -> userConnectionService.disconnect(2L, peerUsername))
+                .isInstanceOf(Exception.class)
+                .hasMessageContaining("peer: connection count is already 0.");
+    }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 상태가 ACCEPTED인 경우, 연결 해제를 시도하지만, 파트너 B의 현재 연결 수가 0이라면 예외가 발생한다.")
+    void disconnect_failed8() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
+
+        User partnerA = User.create("peer", "peer");
+        partnerA.changeConnectionCount(1);
+        User partnerB = User.create("caller", "caller");
+
+        when(userRepository.findLockByUserId(eq(1L))).thenReturn(Optional.of(partnerA));
+        when(userRepository.findLockByUserId(eq(2L))).thenReturn(Optional.of(partnerB));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
+
+        assertThatThrownBy(() -> userConnectionService.disconnect(2L, peerUsername))
+                .isInstanceOf(Exception.class)
+                .hasMessageContaining("caller: connection count is already 0.");
+    }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 해제에 성공한다.")
+    void disconnect_success() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
+
+        User partnerA = User.create("peer", "peer");
+        partnerA.changeConnectionCount(1);
+        User partnerB = User.create("caller", "caller");
+        partnerB.changeConnectionCount(1);
+
+        when(userRepository.findLockByUserId(eq(1L))).thenReturn(Optional.of(partnerA));
+        when(userRepository.findLockByUserId(eq(2L))).thenReturn(Optional.of(partnerB));
+
+        UserConnection userConnection = UserConnection.create(1L, 2L, 1L, ACCEPTED);
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED)))
+                .thenReturn(Optional.of(userConnection));
+
+        Pair<Boolean, String> result = userConnectionService.disconnect(2L, peerUsername);
+
+        assertThat(result.getFirst()).isTrue();
+        assertThat(result.getSecond()).isEqualTo("peer");
+
+        assertThat(partnerA.getConnectionCount()).isEqualTo(0);
+        assertThat(partnerB.getConnectionCount()).isEqualTo(0);
+        assertThat(userConnection.getStatus()).isEqualTo(DISCONNECTED);
+    }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 상태가 REJECTED 이고, 초대자가 연결 해제를 요청한 사람라면 연결 해제에 실패한다.")
+    void disconnect_failed_rejected() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 2L, REJECTED)));
+
+        UserConnection userConnection = UserConnection.create(1L, 2L, 2L, REJECTED);
+        when(userConnectionRepository.findUserConnectionBy(eq(2L), eq(1L)))
+                .thenReturn(Optional.of(userConnection));
+
+        Pair<Boolean, String> result = userConnectionService.disconnect(2L, peerUsername);
+
+        assertThat(result.getFirst()).isFalse();
+        assertThat(result.getSecond()).isEqualTo("Disconnect failed.");
+
+        assertThat(userConnection.getStatus()).isEqualTo(REJECTED);
+    }
+
+    @Test
+    @DisplayName("연결 해제 - 연결 상태가 REJECTED 이고, 초대자가 연결 해제를 요청한 사람이 아니라면 연결 해제에 성공한다.")
+    void disconnect_success2() {
+        String peerUsername = "peer";
+        when(userService.findUserIdByUsername(peerUsername)).thenReturn(Optional.of(1L));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L)))
+                .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, REJECTED)));
+
+        UserConnection userConnection = UserConnection.create(1L, 2L, 1L, REJECTED);
+        when(userConnectionRepository.findUserConnectionBy(eq(2L), eq(1L)))
+                .thenReturn(Optional.of(userConnection));
+
+        Pair<Boolean, String> result = userConnectionService.disconnect(2L, peerUsername);
+
+        assertThat(result.getFirst()).isTrue();
+        assertThat(result.getSecond()).isEqualTo("peer");
+
+        assertThat(userConnection.getStatus()).isEqualTo(DISCONNECTED);
+    }
 }

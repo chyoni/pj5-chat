@@ -138,6 +138,25 @@ public class UserConnectionService {
         return Pair.of(true, inviterUsername);
     }
 
+    @Transactional
+    public Pair<Boolean, String> disconnect(Long callerId, String peerUsername) {
+        return userService.findUserIdByUsername(peerUsername)
+                .filter(peerUserId -> !callerId.equals(peerUserId))
+                .map(peerUserId -> {
+                    UserConnectionStatus status = findStatus(callerId, peerUserId);
+                    if (status == ACCEPTED) {
+                        disconnect(callerId, peerUserId);
+                        return Pair.of(true, peerUsername);
+                    } else if (status == REJECTED && findInviterUserId(callerId, peerUserId).equals(peerUserId)) {
+                        userConnectionRepository.findUserConnectionBy(callerId, peerUserId)
+                                .ifPresent(conn -> conn.changeStatus(DISCONNECTED));
+                        return Pair.of(true, peerUsername);
+                    }
+                    return Pair.of(false, "Disconnect failed.");
+                })
+                .orElseGet(() -> Pair.of(false, "Peer not found."));
+    }
+
     private void accept(Long inviterId, Long acceptorId) {
         // 여기서 min, max는 같은 엔티티임을 보장하는 것이랑 상관 없이 select ... for update로 레코드를 가져왔을 때,
         // 동시에 여러 스레드가 이 메서드를 호출할 수 있는데 그때, 데드락을 피하기 위함. 왜냐하면, A Thread가 1,2를 요청하고 B Thread가 2,1을 동시에 요청하면
@@ -172,6 +191,32 @@ public class UserConnectionService {
         partnerA.changeConnectionCount(partnerA.getConnectionCount() + 1);
         partnerB.changeConnectionCount(partnerB.getConnectionCount() + 1);
         userConnection.changeStatus(ACCEPTED);
+    }
+
+    private void disconnect(Long callerId, Long peerId) {
+        // 여기서 min, max는 같은 엔티티임을 보장하는 것이랑 상관 없이 select ... for update로 레코드를 가져왔을 때,
+        // 동시에 여러 스레드가 이 메서드를 호출할 수 있는데 그때, 데드락을 피하기 위함. 왜냐하면, A Thread가 1,2를 요청하고 B Thread가 2,1을 동시에 요청하면
+        // A는 1에 락걸고 2를 가져오려 할 것이고, B는 2에 락걸고 1을 가져오려 할 것인데 이 둘은 지금 둘 중 하나가 포기하지 않는 이상 락이 절대 풀리지 않게 된다.
+        // 그래서 A, B, C, ...Z 까지 모두 동일하게 1 -> 2 순서로 select ... for update로 가져오게 하기 위해 사용
+        long partnerAId = Long.min(callerId, peerId);
+        long partnerBId = Long.max(callerId, peerId);
+
+        User partnerA = userRepository.findLockByUserId(partnerAId).orElseThrow();
+        User partnerB = userRepository.findLockByUserId(partnerBId).orElseThrow();
+
+        UserConnection userConnection = userConnectionRepository.findUserConnectionBy(partnerAId, partnerBId, ACCEPTED)
+                .orElseThrow();
+
+        if (partnerA.getConnectionCount() <= 0) {
+            throw new IllegalStateException(partnerA.getUsername() + ": connection count is already 0.");
+        }
+        if (partnerB.getConnectionCount() <= 0) {
+            throw new IllegalStateException(partnerB.getUsername() + ": connection count is already 0.");
+        }
+
+        partnerA.changeConnectionCount(partnerA.getConnectionCount() - 1);
+        partnerB.changeConnectionCount(partnerB.getConnectionCount() - 1);
+        userConnection.changeStatus(DISCONNECTED);
     }
 
     private Long findInviterUserId(Long partnerAUserId, Long partnerBUserId) {

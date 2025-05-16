@@ -19,6 +19,9 @@ public interface MessageType {
     String REJECT_REQUEST = "REJECT_REQUEST";
     String REJECT_RESPONSE = "REJECT_RESPONSE";
 
+    String DISCONNECT_REQUEST = "DISCONNECT_REQUEST";
+    String DISCONNECT_RESPONSE = "DISCONNECT_RESPONSE";
+
     // Notification
     String KEEP_ALIVE = "KEEP_ALIVE";
     String NOTIFY_ACCEPT = "NOTIFY_ACCEPT";
