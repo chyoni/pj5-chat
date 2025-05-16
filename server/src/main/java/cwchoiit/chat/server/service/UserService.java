@@ -55,6 +55,11 @@ public class UserService {
                 .map(User::getConnectionInviteCode);
     }
 
+    public Optional<Integer> findConnectionCountByUserId(Long userId) {
+        return userRepository.findByUserId(userId)
+                .map(User::getConnectionCount);
+    }
+
     public Optional<UserReadResponse> findUserByConnectionInviteCode(String connectionInviteCode) {
         return userRepository.findByConnectionInviteCode(connectionInviteCode)
                 .map(UserReadResponse::of);

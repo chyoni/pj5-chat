@@ -31,4 +31,3 @@ create table if not exists user_connection
 create index idx_partner_b_user_id on user_connection (partner_b_user_id);
 create index idx_partner_a_user_id_status on user_connection (partner_a_user_id, status);
 create index idx_partner_b_user_id_status on user_connection (partner_b_user_id, status);
-

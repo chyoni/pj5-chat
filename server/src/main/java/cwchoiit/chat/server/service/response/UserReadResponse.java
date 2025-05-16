@@ -1,6 +1,7 @@
 package cwchoiit.chat.server.service.response;
 
 import cwchoiit.chat.server.entity.User;
+import cwchoiit.chat.server.repository.projection.UserIdWithName;
 
 import java.util.Objects;
 
@@ -20,5 +21,9 @@ public record UserReadResponse (Long userId, String username) {
 
     public static UserReadResponse of(User user) {
         return new UserReadResponse(user.getUserId(), user.getUsername());
+    }
+
+    public static UserReadResponse of(UserIdWithName userIdWithName) {
+        return new UserReadResponse(userIdWithName.getUserId(), userIdWithName.getUsername());
     }
 }

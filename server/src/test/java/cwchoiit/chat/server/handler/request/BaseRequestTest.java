@@ -1,12 +1,12 @@
 package cwchoiit.chat.server.handler.request;
 
 import cwchoiit.chat.serializer.Serializer;
-import cwchoiit.chat.server.constants.MessageType;
+import cwchoiit.chat.server.constants.UserConnectionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static cwchoiit.chat.server.constants.MessageType.*;
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 
 @DisplayName("BaseRequest의 역직렬화 테스트")
@@ -65,5 +65,47 @@ class BaseRequestTest {
 
         AcceptRequest acceptRequest = (AcceptRequest) baseRequest;
         assertThat(acceptRequest.getInviterUsername()).isEqualTo("user123");
+    }
+
+    @Test
+    @DisplayName("BaseRequest 클래스가 FETCH_USER_INVITE_CODE_REQUEST 타입으로 메시지가 들어오는 경우 역직렬화 정상 처리")
+    void deserialize5() {
+        BaseRequest baseRequest = Serializer.deserialize(
+                "{\"type\":\"FETCH_USER_INVITE_CODE_REQUEST\"}",
+                BaseRequest.class
+        ).orElseThrow();
+
+        assertThat(baseRequest.getType()).isEqualTo(FETCH_USER_INVITE_CODE_REQUEST);
+        assertThat(baseRequest).isInstanceOf(FetchUserInviteCodeRequest.class);
+    }
+
+    @Test
+    @DisplayName("BaseRequest 클래스가 FETCH_CONNECTIONS_REQUEST 타입으로 메시지가 들어오는 경우 역직렬화 정상 처리")
+    void deserialize6() {
+        BaseRequest baseRequest = Serializer.deserialize(
+                "{\"type\":\"FETCH_CONNECTIONS_REQUEST\", \"status\": \"PENDING\"}",
+                BaseRequest.class
+        ).orElseThrow();
+
+        assertThat(baseRequest.getType()).isEqualTo(FETCH_CONNECTIONS_REQUEST);
+        assertThat(baseRequest).isInstanceOf(FetchConnectionsRequest.class);
+
+        FetchConnectionsRequest fetchConnectionsRequest = (FetchConnectionsRequest) baseRequest;
+        assertThat(fetchConnectionsRequest.getStatus()).isEqualTo(UserConnectionStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("BaseRequest 클래스가 REJECT_REQUEST 타입으로 메시지가 들어오는 경우 역직렬화 정상 처리")
+    void deserialize7() {
+        BaseRequest baseRequest = Serializer.deserialize(
+                "{\"type\":\"REJECT_REQUEST\", \"inviterUsername\": \"inviter\"}",
+                BaseRequest.class
+        ).orElseThrow();
+
+        assertThat(baseRequest.getType()).isEqualTo(REJECT_REQUEST);
+        assertThat(baseRequest).isInstanceOf(RejectRequest.class);
+
+        RejectRequest rejectRequest = (RejectRequest) baseRequest;
+        assertThat(rejectRequest.getInviterUsername()).isEqualTo("inviter");
     }
 }
