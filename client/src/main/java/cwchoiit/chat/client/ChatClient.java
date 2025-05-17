@@ -1,9 +1,10 @@
 package cwchoiit.chat.client;
 
-import cwchoiit.chat.client.dto.MessageRequest;
 import cwchoiit.chat.client.handler.CommandHandler;
+import cwchoiit.chat.client.handler.ReceiveMessageHandler;
 import cwchoiit.chat.client.handler.WebSocketReceiverHandler;
 import cwchoiit.chat.client.handler.WebSocketSenderHandler;
+import cwchoiit.chat.client.messages.send.ChatMessageSendMessage;
 import cwchoiit.chat.client.service.RestApiService;
 import cwchoiit.chat.client.service.TerminalService;
 import cwchoiit.chat.client.service.WebSocketService;
@@ -15,6 +16,7 @@ public class ChatClient {
         final String WEBSOCKET_ENDPOINT = "/ws/v1/message";
 
         TerminalService terminalService = TerminalService.create();
+        ReceiveMessageHandler receiveMessageHandler = new ReceiveMessageHandler(terminalService);
 
         RestApiService restApiService = new RestApiService(terminalService, BASE_URL);
         WebSocketSenderHandler webSocketSenderHandler = new WebSocketSenderHandler(terminalService);
@@ -24,7 +26,7 @@ public class ChatClient {
                 BASE_URL,
                 WEBSOCKET_ENDPOINT
         );
-        webSocketService.setReceiverHandler(new WebSocketReceiverHandler(terminalService));
+        webSocketService.setReceiverHandler(new WebSocketReceiverHandler(receiveMessageHandler));
         CommandHandler commandHandler = new CommandHandler(restApiService, webSocketService, terminalService);
 
         while (true) {
@@ -40,7 +42,7 @@ public class ChatClient {
 
             } else if (!input.isEmpty()) {
                 terminalService.printMessage("[Me]", input);
-                webSocketService.sendMessage(new MessageRequest("[Client]", input));
+                webSocketService.sendMessage(new ChatMessageSendMessage("[Client]", input));
             }
         }
     }

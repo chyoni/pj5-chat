@@ -5,7 +5,7 @@ import cwchoiit.chat.server.entity.User;
 import cwchoiit.chat.server.entity.UserConnection;
 import cwchoiit.chat.server.repository.UserConnectionRepository;
 import cwchoiit.chat.server.repository.UserRepository;
-import cwchoiit.chat.server.repository.projection.UserIdWithName;
+import cwchoiit.chat.server.repository.projection.ConnectionInformation;
 import cwchoiit.chat.server.service.response.UserReadResponse;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -36,18 +36,25 @@ public class UserConnectionService {
     private int LIMIT_CONNECTION_COUNT = 1_000;
 
     public List<UserReadResponse> findConnectionUsersByStatus(Long userId, UserConnectionStatus status) {
-        List<UserIdWithName> partnerASide = userConnectionRepository.findAllUserConnectionByPartnerAUserId(
+        List<ConnectionInformation> partnerASide = userConnectionRepository.findAllUserConnectionByPartnerAUserId(
                 userId,
                 status.name()
         );
-        List<UserIdWithName> partnerBSide = userConnectionRepository.findAllUserConnectionByPartnerBUserId(
+        List<ConnectionInformation> partnerBSide = userConnectionRepository.findAllUserConnectionByPartnerBUserId(
                 userId,
                 status.name()
         );
 
-        return Stream.concat(partnerASide.stream(), partnerBSide.stream())
-                .map(UserReadResponse::of)
-                .toList();
+        if (status == ACCEPTED) {
+            return Stream.concat(partnerASide.stream(), partnerBSide.stream())
+                    .map(UserReadResponse::of)
+                    .toList();
+        } else {
+            return Stream.concat(partnerASide.stream(), partnerBSide.stream())
+                    .filter(conn -> !conn.getInviterUserId().equals(userId))
+                    .map(UserReadResponse::of)
+                    .toList();
+        }
     }
 
     @Transactional
@@ -168,7 +175,7 @@ public class UserConnectionService {
         User partnerA = userRepository.findLockByUserId(partnerAId).orElseThrow();
         User partnerB = userRepository.findLockByUserId(partnerBId).orElseThrow();
 
-        UserConnection userConnection = userConnectionRepository.findUserConnectionBy(partnerAId, partnerBId, PENDING)
+        UserConnection userConnection = userConnectionRepository.findUserConnectionBy(partnerAId, partnerBId, PENDING.name())
                 .orElseThrow();
 
         if (partnerA.getConnectionCount() >= LIMIT_CONNECTION_COUNT) {
@@ -204,7 +211,7 @@ public class UserConnectionService {
         User partnerA = userRepository.findLockByUserId(partnerAId).orElseThrow();
         User partnerB = userRepository.findLockByUserId(partnerBId).orElseThrow();
 
-        UserConnection userConnection = userConnectionRepository.findUserConnectionBy(partnerAId, partnerBId, ACCEPTED)
+        UserConnection userConnection = userConnectionRepository.findUserConnectionBy(partnerAId, partnerBId, ACCEPTED.name())
                 .orElseThrow();
 
         if (partnerA.getConnectionCount() <= 0) {

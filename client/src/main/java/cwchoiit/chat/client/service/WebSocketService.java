@@ -1,10 +1,10 @@
 package cwchoiit.chat.client.service;
 
-import cwchoiit.chat.client.dto.BaseRequest;
-import cwchoiit.chat.client.dto.KeepAliveRequest;
 import cwchoiit.chat.client.handler.WebSocketReceiverHandler;
 import cwchoiit.chat.client.handler.WebSocketSenderHandler;
 import cwchoiit.chat.client.handler.WebSocketSessionHandler;
+import cwchoiit.chat.client.messages.BaseSendMessage;
+import cwchoiit.chat.client.messages.send.KeepAliveSendMessage;
 import jakarta.websocket.ClientEndpointConfig;
 import jakarta.websocket.CloseReason;
 import jakarta.websocket.Session;
@@ -127,7 +127,7 @@ public class WebSocketService {
      * Closes the current WebSocket session and performs necessary cleanup actions.
      * <p>
      * This method disables the keep-alive functionality and ensures that the WebSocket
-     * session is properly closed, if it is open. If any errors occur while attempting
+     * session is properly closed if it is open. If any errors occur while attempting
      * to close the session, a system message is printed with the error details.
      * <p>
      * The session is set to null after closure to indicate that no active WebSocket
@@ -154,7 +154,7 @@ public class WebSocketService {
      *
      * @param request the request containing the message data to be sent
      */
-    public void sendMessage(BaseRequest request) {
+    public void sendMessage(BaseSendMessage request) {
         if (session != null && session.isOpen()) {
             senderHandler.sendMessage(session, request);
         } else {
@@ -167,7 +167,7 @@ public class WebSocketService {
      */
     private void enableKeepAlive() {
         scheduledExecutorService.scheduleAtFixedRate(() ->
-                        sendMessage(new KeepAliveRequest()),
+                        sendMessage(new KeepAliveSendMessage()),
                 1,
                 1,
                 TimeUnit.MINUTES

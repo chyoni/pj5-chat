@@ -1,8 +1,6 @@
 package cwchoiit.chat.client.handler;
 
-import cwchoiit.chat.client.dto.MessageRequest;
 import cwchoiit.chat.client.service.TerminalService;
-import cwchoiit.chat.serializer.Serializer;
 import jakarta.websocket.MessageHandler;
 import lombok.RequiredArgsConstructor;
 
@@ -26,11 +24,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class WebSocketReceiverHandler implements MessageHandler.Whole<String> {
 
-    private final TerminalService terminalService;
+    private final ReceiveMessageHandler receiveMessageHandler;
 
     @Override
     public void onMessage(String payload) {
-        Serializer.deserialize(payload, MessageRequest.class)
-                .ifPresent(message -> terminalService.printMessage(message.getUsername(), message.getContent()));
+        receiveMessageHandler.handle(payload);
     }
 }

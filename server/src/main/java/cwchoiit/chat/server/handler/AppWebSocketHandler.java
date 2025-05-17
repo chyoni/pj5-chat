@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.handler;
 
-import cwchoiit.chat.serializer.Serializer;
+import cwchoiit.chat.common.serializer.Serializer;
 import cwchoiit.chat.server.constants.Constants;
 import cwchoiit.chat.server.handler.adapter.RequestHandlerDispatcher;
 import cwchoiit.chat.server.handler.request.BaseRequest;

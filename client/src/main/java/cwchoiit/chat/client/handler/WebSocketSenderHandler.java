@@ -1,10 +1,8 @@
 package cwchoiit.chat.client.handler;
 
-import cwchoiit.chat.client.dto.BaseRequest;
-import cwchoiit.chat.client.dto.KeepAliveRequest;
-import cwchoiit.chat.client.dto.MessageRequest;
+import cwchoiit.chat.client.messages.BaseSendMessage;
 import cwchoiit.chat.client.service.TerminalService;
-import cwchoiit.chat.serializer.Serializer;
+import cwchoiit.chat.common.serializer.Serializer;
 import jakarta.websocket.Session;
 import lombok.RequiredArgsConstructor;
 
@@ -29,7 +27,7 @@ public class WebSocketSenderHandler {
 
     private final TerminalService terminalService;
 
-    public void sendMessage(Session session, BaseRequest request) {
+    public void sendMessage(Session session, BaseSendMessage request) {
         if (session != null && session.isOpen()) {
             Serializer.serialize(request)
                     .ifPresent(serializedMessage -> processSendMessage(session, serializedMessage));

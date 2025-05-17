@@ -390,7 +390,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         when(userRepository.findLockByUserId(1L)).thenReturn(Optional.of(partnerA));
         when(userRepository.findLockByUserId(2L)).thenReturn(Optional.of(partnerB));
 
-        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING)))
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING.name())))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
@@ -412,7 +412,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         when(userRepository.findLockByUserId(1L)).thenReturn(Optional.of(partnerA));
         when(userRepository.findLockByUserId(2L)).thenReturn(Optional.of(partnerB));
 
-        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING)))
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING.name())))
                 .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
 
         assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
@@ -435,7 +435,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         when(userRepository.findLockByUserId(1L)).thenReturn(Optional.of(partnerA));
         when(userRepository.findLockByUserId(2L)).thenReturn(Optional.of(partnerB));
 
-        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING)))
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING.name())))
                 .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, PENDING)));
 
         assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
@@ -458,7 +458,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         when(userRepository.findLockByUserId(2L)).thenReturn(Optional.of(partnerB));
 
         UserConnection userConnection = UserConnection.create(1L, 2L, 1L, PENDING);
-        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING)))
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(PENDING.name())))
                 .thenReturn(Optional.of(userConnection));
 
         Pair<Optional<Long>, String> result = userConnectionService.accept(2L, "inviter");
@@ -620,7 +620,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         when(userRepository.findLockByUserId(eq(1L))).thenReturn(Optional.of(User.create("peer", "peer")));
         when(userRepository.findLockByUserId(eq(2L))).thenReturn(Optional.of(User.create("caller", "caller")));
 
-        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED)))
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED.name())))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userConnectionService.disconnect(2L, peerUsername))
@@ -642,7 +642,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         when(userRepository.findLockByUserId(eq(1L))).thenReturn(Optional.of(partnerA));
         when(userRepository.findLockByUserId(eq(2L))).thenReturn(Optional.of(partnerB));
 
-        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED)))
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED.name())))
                 .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
 
         assertThatThrownBy(() -> userConnectionService.disconnect(2L, peerUsername))
@@ -666,7 +666,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         when(userRepository.findLockByUserId(eq(1L))).thenReturn(Optional.of(partnerA));
         when(userRepository.findLockByUserId(eq(2L))).thenReturn(Optional.of(partnerB));
 
-        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED)))
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED.name())))
                 .thenReturn(Optional.of(UserConnection.create(1L, 2L, 1L, ACCEPTED)));
 
         assertThatThrownBy(() -> userConnectionService.disconnect(2L, peerUsername))
@@ -692,7 +692,7 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
         when(userRepository.findLockByUserId(eq(2L))).thenReturn(Optional.of(partnerB));
 
         UserConnection userConnection = UserConnection.create(1L, 2L, 1L, ACCEPTED);
-        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED)))
+        when(userConnectionRepository.findUserConnectionBy(eq(1L), eq(2L), eq(ACCEPTED.name())))
                 .thenReturn(Optional.of(userConnection));
 
         Pair<Boolean, String> result = userConnectionService.disconnect(2L, peerUsername);

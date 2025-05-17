@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.auth;
 
-import cwchoiit.chat.serializer.Serializer;
+import cwchoiit.chat.common.serializer.Serializer;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

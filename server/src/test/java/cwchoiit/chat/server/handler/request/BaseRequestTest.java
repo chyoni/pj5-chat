@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.handler.request;
 
-import cwchoiit.chat.serializer.Serializer;
+import cwchoiit.chat.common.serializer.Serializer;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

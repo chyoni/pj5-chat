@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.session;
 
-import cwchoiit.chat.serializer.Serializer;
+import cwchoiit.chat.common.serializer.Serializer;
 import cwchoiit.chat.server.handler.response.BaseResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

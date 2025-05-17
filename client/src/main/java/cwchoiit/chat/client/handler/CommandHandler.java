@@ -1,10 +1,12 @@
 package cwchoiit.chat.client.handler;
 
+import cwchoiit.chat.client.constants.UserConnectionStatus;
+import cwchoiit.chat.client.messages.send.*;
 import cwchoiit.chat.client.service.RestApiService;
 import cwchoiit.chat.client.service.TerminalService;
 import cwchoiit.chat.client.service.WebSocketService;
-import lombok.RequiredArgsConstructor;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -30,20 +32,38 @@ import java.util.function.Function;
  * <p>
  * The class also supports error handling for invalid or unrecognized commands.
  */
-@RequiredArgsConstructor
 public class CommandHandler {
     private final RestApiService restApiService;
     private final WebSocketService webSocketService;
     private final TerminalService terminalService;
-    private final Map<String, Function<String[], Boolean>> commands = Map.of(
-            "register", this::register,
-            "unregister", this::unregister,
-            "login", this::login,
-            "logout", this::logout,
-            "clear", this::clear,
-            "exit", this::exit
-    );
+    private final Map<String, Function<String[], Boolean>> commands = new HashMap<>();
 
+    public CommandHandler(RestApiService restApiService,
+                          WebSocketService webSocketService,
+                          TerminalService terminalService) {
+        this.restApiService = restApiService;
+        this.webSocketService = webSocketService;
+        this.terminalService = terminalService;
+
+        init();
+    }
+
+    private void init() {
+        commands.put("help", this::help);
+        commands.put("register", this::register);
+        commands.put("unregister", this::unregister);
+        commands.put("logout", this::logout);
+        commands.put("login", this::login);
+        commands.put("invitecode", this::inviteCode);
+        commands.put("invite", this::invite);
+        commands.put("accept", this::accept);
+        commands.put("reject", this::reject);
+        commands.put("disconnect", this::disconnect);
+        commands.put("connections", this::connections);
+        commands.put("pending", this::pending);
+        commands.put("clear", this::clear);
+        commands.put("exit", this::exit);
+    }
 
     /**
      * Processes a user command and dispatches it to the appropriate service for processing.
@@ -57,7 +77,6 @@ public class CommandHandler {
             terminalService.printSystemMessage("Invalid command: %s".formatted(command));
             return true;
         });
-
         return commander.apply(argument.split(" "));
     }
 
@@ -105,14 +124,84 @@ public class CommandHandler {
         return true;
     }
 
+    private Boolean inviteCode(String[] params) {
+        webSocketService.sendMessage(new FetchUserInviteCodeSendMessage());
+        terminalService.printSystemMessage("Fetching invite code for mine. Please wait...");
+        return true;
+    }
+
+    private Boolean invite(String[] params) {
+        if (params.length > 0) {
+            webSocketService.sendMessage(new InviteSendMessage(params[0]));
+            terminalService.printSystemMessage("Inviting %s. Please wait...".formatted(params[0]));
+        }
+        return true;
+    }
+
+    private Boolean accept(String[] params) {
+        if (params.length > 0) {
+            webSocketService.sendMessage(new AcceptSendMessage(params[0]));
+            terminalService.printSystemMessage("Accepting invite for %s. Please wait...".formatted(params[0]));
+        }
+        return true;
+    }
+
+    private Boolean reject(String[] params) {
+        if (params.length > 0) {
+            webSocketService.sendMessage(new RejectSendMessage(params[0]));
+            terminalService.printSystemMessage("Rejecting invite for %s. Please wait...".formatted(params[0]));
+        }
+        return true;
+    }
+
+    private Boolean disconnect(String[] params) {
+        if (params.length > 0) {
+            webSocketService.sendMessage(new DisconnectSendMessage(params[0]));
+            terminalService.printSystemMessage("Disconnecting with %s. Please wait...".formatted(params[0]));
+        }
+        return true;
+    }
+
+    private Boolean connections(String[] params) {
+        webSocketService.sendMessage(new FetchConnectionsSendMessage(UserConnectionStatus.ACCEPTED));
+        terminalService.printSystemMessage("Fetching connections. Please wait...");
+        return true;
+    }
+
+    private Boolean pending(String[] params) {
+        webSocketService.sendMessage(new FetchConnectionsSendMessage(UserConnectionStatus.PENDING));
+        terminalService.printSystemMessage("Fetching pending connections. Please wait...");
+        return true;
+    }
+
     private Boolean clear(String[] params) {
         terminalService.clearTerminal();
         return true;
     }
 
     private Boolean exit(String[] params) {
-        webSocketService.closeSession();
+        login(params);
         terminalService.printSystemMessage("Exiting...");
         return false;
+    }
+
+    private Boolean help(String[] params) {
+        terminalService.printSystemMessage("""
+                Commands:
+                '/register': Registers a new user. ex: /register <username> <password>
+                '/unregister': Unregisters the current user. ex: /unregister
+                '/login': Logs in the user. ex: /login <username> <password>
+                '/logout': Logs out the current user. ex: /logout
+                '/invitecode': Fetches the invite code for the current user. ex: /invitecode
+                '/invite': Invites a user to the chat room. ex: /invite <invite code>
+                '/accept': Accepts an invite from a user. ex: /accept <inviter username>
+                '/reject': Rejects an invite from a user. ex: /reject <inviter username>
+                '/disconnect': Disconnects with a user. ex: /disconnect <connected username>
+                '/connections': Fetches the list of connected users. ex: /connections
+                '/pending': Fetches the list of pending connections. ex: /pending
+                '/clear': Clears the terminal. ex: /clear
+                '/exit': Terminates the application. ex: /exit
+                """);
+        return true;
     }
 }

@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.session;
 
-import cwchoiit.chat.serializer.Serializer;
+import cwchoiit.chat.common.serializer.Serializer;
 import cwchoiit.chat.server.handler.response.MessageResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
