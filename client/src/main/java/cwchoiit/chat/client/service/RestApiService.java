@@ -1,7 +1,7 @@
 package cwchoiit.chat.client.service;
 
-import cwchoiit.chat.client.dto.UserRegisterRequest;
-import cwchoiit.chat.serializer.Serializer;
+import cwchoiit.chat.client.service.request.UserRegisterRequest;
+import cwchoiit.chat.common.serializer.Serializer;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
@@ -64,7 +64,7 @@ public class RestApiService {
     }
 
     /**
-     * Attempts to login the user with the provided credentials.
+     * Attempts to log in the user with the provided credentials.
      *
      * @param username The username to be authenticated. Must match the username used during registration.
      * @param password The password to be authenticated. Must match the password used during registration.
@@ -81,7 +81,7 @@ public class RestApiService {
     }
 
     /**
-     * Attempts to logout the user from the REST API.
+     * Attempts to log out the user from the REST API.
      *
      * @return true if the logout was successful, false otherwise.
      */
@@ -109,7 +109,7 @@ public class RestApiService {
                     .uri(new URI(url + path))
                     .header("Content-Type", "application/json");
 
-            if (!sessionId.isEmpty()) {
+            if (sessionId != null && !sessionId.isEmpty()) {
                 builder.header("Cookie", "SESSION=" + sessionId);
             }
 

@@ -65,7 +65,7 @@ class FetchConnectionsRequestHandlerTest {
 
         when(mocked.getAttributes()).thenReturn(attributes);
 
-        FetchConnectionsRequest fetchConnectionsRequest = new FetchConnectionsRequest(UserConnectionStatus.PENDING);
+        FetchConnectionsRequest fetchConnectionsRequest = new FetchConnectionsRequest(UserConnectionStatus.ACCEPTED);
         when(userConnectionService.findConnectionUsersByStatus(eq(1L), eq(fetchConnectionsRequest.getStatus())))
                 .thenReturn(
                         List.of(
