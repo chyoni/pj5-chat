@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum Constants {
+public enum IdKey {
     HTTP_SESSION_ID("HTTP_SESSION_ID"),
     USER_ID("USER_ID");
 

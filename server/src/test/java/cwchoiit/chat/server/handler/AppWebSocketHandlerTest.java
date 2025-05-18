@@ -1,7 +1,7 @@
 package cwchoiit.chat.server.handler;
 
 import cwchoiit.chat.common.serializer.Serializer;
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.constants.MessageType;
 import cwchoiit.chat.server.handler.adapter.RequestHandlerDispatcher;
 import cwchoiit.chat.server.handler.request.MessageRequest;
@@ -41,7 +41,7 @@ class AppWebSocketHandlerTest {
     @DisplayName("afterConnectionEstablished 호출 시, 세션 매니저에 세션이 등록된다.")
     void afterConnectionEstablished() {
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put(Constants.USER_ID.getValue(), 1L);
+        attributes.put(IdKey.USER_ID.getValue(), 1L);
 
         WebSocketSession mockSession = mock(WebSocketSession.class);
         when(mockSession.getAttributes()).thenReturn(attributes);
@@ -63,7 +63,7 @@ class AppWebSocketHandlerTest {
     @DisplayName("handleTransportError 호출 시, 세션 매니저에 해당 세션이 삭제된다.")
     void handleTransportError() {
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put(Constants.USER_ID.getValue(), 1L);
+        attributes.put(IdKey.USER_ID.getValue(), 1L);
 
         WebSocketSession mockSession = mock(WebSocketSession.class);
         when(mockSession.getAttributes()).thenReturn(attributes);
@@ -77,7 +77,7 @@ class AppWebSocketHandlerTest {
     @DisplayName("afterConnectionClosed 호출 시, 세션 매니저에 해당 세션이 삭제된다.")
     void afterConnectionClosed() {
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put(Constants.USER_ID.getValue(), 1L);
+        attributes.put(IdKey.USER_ID.getValue(), 1L);
 
         WebSocketSession mockSession = mock(WebSocketSession.class);
         when(mockSession.getAttributes()).thenReturn(attributes);

@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.handler.adapter;
 
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.request.FetchConnectionsRequest;
 import cwchoiit.chat.server.handler.response.FetchConnectionsResponse;
@@ -32,7 +32,7 @@ public class FetchConnectionsRequestHandler implements RequestHandler {
     @Override
     public void handle(BaseRequest request, WebSocketSession session) {
         if (request instanceof FetchConnectionsRequest fetchConnectionsRequest) {
-            Long requestUserId = (Long) session.getAttributes().get(Constants.USER_ID.getValue());
+            Long requestUserId = (Long) session.getAttributes().get(IdKey.USER_ID.getValue());
             List<ConnectionReadResponse> connections = userConnectionService.findConnectionUsersByStatus(
                             requestUserId,
                             fetchConnectionsRequest.getStatus())

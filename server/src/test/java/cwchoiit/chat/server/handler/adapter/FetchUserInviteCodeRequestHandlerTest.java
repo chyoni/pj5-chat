@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.handler.adapter;
 
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.constants.MessageType;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.handler.request.*;
@@ -63,7 +63,7 @@ class FetchUserInviteCodeRequestHandlerTest {
         WebSocketSession mocked = mock(WebSocketSession.class);
 
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put(Constants.USER_ID.getValue(), 1L);
+        attributes.put(IdKey.USER_ID.getValue(), 1L);
 
         when(mocked.getAttributes()).thenReturn(attributes);
 
@@ -85,7 +85,7 @@ class FetchUserInviteCodeRequestHandlerTest {
         WebSocketSession mocked = mock(WebSocketSession.class);
 
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put(Constants.USER_ID.getValue(), 1L);
+        attributes.put(IdKey.USER_ID.getValue(), 1L);
 
         when(mocked.getAttributes()).thenReturn(attributes);
 
