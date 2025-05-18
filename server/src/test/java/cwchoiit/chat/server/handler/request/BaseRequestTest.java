@@ -123,4 +123,35 @@ class BaseRequestTest {
         DisconnectRequest disconnectRequest = (DisconnectRequest) baseRequest;
         assertThat(disconnectRequest.getPeerUsername()).isEqualTo("peer");
     }
+
+    @Test
+    @DisplayName("BaseRequest 클래스가 CHANNEL_CREATE_REQUEST 타입으로 메시지가 들어오는 경우 역직렬화 정상 처리")
+    void deserialize9() {
+        BaseRequest baseRequest = Serializer.deserialize(
+                "{\"type\":\"CHANNEL_CREATE_REQUEST\", \"title\": \"title\", \"participantUsername\": \"participantUsername\"}",
+                BaseRequest.class
+        ).orElseThrow();
+
+        assertThat(baseRequest.getType()).isEqualTo(CHANNEL_CREATE_REQUEST);
+        assertThat(baseRequest).isInstanceOf(CreateChannelRequest.class);
+
+        CreateChannelRequest createChannelRequest = (CreateChannelRequest) baseRequest;
+        assertThat(createChannelRequest.getTitle()).isEqualTo("title");
+        assertThat(createChannelRequest.getParticipantUsername()).isEqualTo("participantUsername");
+    }
+
+    @Test
+    @DisplayName("BaseRequest 클래스가 ENTER_CHANNEL_REQUEST 타입으로 메시지가 들어오는 경우 역직렬화 정상 처리")
+    void deserialize10() {
+        BaseRequest baseRequest = Serializer.deserialize(
+                "{\"type\":\"ENTER_CHANNEL_REQUEST\", \"channelId\": \"1\"}",
+                BaseRequest.class
+        ).orElseThrow();
+
+        assertThat(baseRequest.getType()).isEqualTo(ENTER_CHANNEL_REQUEST);
+        assertThat(baseRequest).isInstanceOf(EnterChannelRequest.class);
+
+        EnterChannelRequest enterChannelRequest = (EnterChannelRequest) baseRequest;
+        assertThat(enterChannelRequest.getChannelId()).isEqualTo(1);
+    }
 }

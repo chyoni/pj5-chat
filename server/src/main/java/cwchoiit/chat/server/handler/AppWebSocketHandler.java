@@ -1,7 +1,7 @@
 package cwchoiit.chat.server.handler;
 
 import cwchoiit.chat.common.serializer.Serializer;
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.handler.adapter.RequestHandlerDispatcher;
 import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.session.WebSocketSessionManager;
@@ -83,6 +83,6 @@ public class AppWebSocketHandler extends TextWebSocketHandler {
     }
 
     private Long findUserIdBySession(WebSocketSession session) {
-        return (Long) session.getAttributes().get(Constants.USER_ID.getValue());
+        return (Long) session.getAttributes().get(IdKey.USER_ID.getValue());
     }
 }

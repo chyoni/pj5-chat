@@ -1,7 +1,7 @@
 package cwchoiit.chat.server.handler.adapter;
 
 import cwchoiit.chat.server.SpringBootTestConfiguration;
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.handler.request.AcceptRequest;
 import cwchoiit.chat.server.handler.request.InviteRequest;
 import cwchoiit.chat.server.handler.request.KeepAliveRequest;
@@ -66,7 +66,7 @@ class AcceptRequestHandlerTest extends SpringBootTestConfiguration {
         long acceptorId = 1L;
         long inviterId = 2L;
 
-        attributes.put(Constants.USER_ID.getValue(), acceptorId);
+        attributes.put(IdKey.USER_ID.getValue(), acceptorId);
         when(mockSession.getAttributes()).thenReturn(attributes);
 
         when(userConnectionService.accept(eq(acceptorId), anyString()))
@@ -92,7 +92,7 @@ class AcceptRequestHandlerTest extends SpringBootTestConfiguration {
         long acceptorId = 1L;
         long inviterId = 2L;
 
-        attributes.put(Constants.USER_ID.getValue(), acceptorId);
+        attributes.put(IdKey.USER_ID.getValue(), acceptorId);
         when(mockSession.getAttributes()).thenReturn(attributes);
 
         when(userConnectionService.accept(eq(acceptorId), anyString()))

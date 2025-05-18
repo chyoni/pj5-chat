@@ -35,28 +35,6 @@ public class UserConnectionService {
     @Setter
     private int LIMIT_CONNECTION_COUNT = 1_000;
 
-    public List<UserReadResponse> findConnectionUsersByStatus(Long userId, UserConnectionStatus status) {
-        List<ConnectionInformation> partnerASide = userConnectionRepository.findAllUserConnectionByPartnerAUserId(
-                userId,
-                status.name()
-        );
-        List<ConnectionInformation> partnerBSide = userConnectionRepository.findAllUserConnectionByPartnerBUserId(
-                userId,
-                status.name()
-        );
-
-        if (status == ACCEPTED) {
-            return Stream.concat(partnerASide.stream(), partnerBSide.stream())
-                    .map(UserReadResponse::of)
-                    .toList();
-        } else {
-            return Stream.concat(partnerASide.stream(), partnerBSide.stream())
-                    .filter(conn -> !conn.getInviterUserId().equals(userId))
-                    .map(UserReadResponse::of)
-                    .toList();
-        }
-    }
-
     @Transactional
     public Pair<Optional<Long>, String> invite(Long inviterUserId, String inviteCode) {
         UserReadResponse partner = userService.findUserByConnectionInviteCode(inviteCode).orElse(null);
@@ -164,6 +142,36 @@ public class UserConnectionService {
                 .orElseGet(() -> Pair.of(false, "Peer not found."));
     }
 
+    public List<UserReadResponse> findConnectionUsersByStatus(Long userId, UserConnectionStatus status) {
+        List<ConnectionInformation> partnerASide = userConnectionRepository.findAllUserConnectionByPartnerAUserId(
+                userId,
+                status.name()
+        );
+        List<ConnectionInformation> partnerBSide = userConnectionRepository.findAllUserConnectionByPartnerBUserId(
+                userId,
+                status.name()
+        );
+
+        if (status == ACCEPTED) {
+            return Stream.concat(partnerASide.stream(), partnerBSide.stream())
+                    .map(UserReadResponse::of)
+                    .toList();
+        } else {
+            return Stream.concat(partnerASide.stream(), partnerBSide.stream())
+                    .filter(conn -> !conn.getInviterUserId().equals(userId))
+                    .map(UserReadResponse::of)
+                    .toList();
+        }
+    }
+
+    public UserConnectionStatus findStatus(Long inviterUserId, Long partnerUserId) {
+        return userConnectionRepository.findUserConnectionBy(
+                        Long.min(inviterUserId, partnerUserId), // (1,2) (2,1) 모두 같은 엔티티여야 하고, 데이터베이스에서 이를 처리하지 않았기 때문에, 서버단에서 처리하기 위함
+                        Long.max(inviterUserId, partnerUserId)
+                ).map(userConnection -> valueOf(userConnection.getStatus().name()))
+                .orElse(NONE);
+    }
+
     private void accept(Long inviterId, Long acceptorId) {
         // 여기서 min, max는 같은 엔티티임을 보장하는 것이랑 상관 없이 select ... for update로 레코드를 가져왔을 때,
         // 동시에 여러 스레드가 이 메서드를 호출할 수 있는데 그때, 데드락을 피하기 위함. 왜냐하면, A Thread가 1,2를 요청하고 B Thread가 2,1을 동시에 요청하면
@@ -232,14 +240,6 @@ public class UserConnectionService {
                         Long.max(partnerAUserId, partnerBUserId)
                 ).map(UserConnection::getInviterUserId)
                 .orElseThrow();
-    }
-
-    private UserConnectionStatus findStatus(Long inviterUserId, Long partnerUserId) {
-        return userConnectionRepository.findUserConnectionBy(
-                        Long.min(inviterUserId, partnerUserId), // (1,2) (2,1) 모두 같은 엔티티여야 하고, 데이터베이스에서 이를 처리하지 않았기 때문에, 서버단에서 처리하기 위함
-                        Long.max(inviterUserId, partnerUserId)
-                ).map(userConnection -> valueOf(userConnection.getStatus().name()))
-                .orElse(NONE);
     }
 
     private void createConnection(Long inviterUserId, Long partnerUserId) {

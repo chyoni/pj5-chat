@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.handler.adapter;
 
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.request.RejectRequest;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
@@ -32,7 +32,7 @@ public class RejectRequestHandler implements RequestHandler {
     @Override
     public void handle(BaseRequest request, WebSocketSession session) {
         if (request instanceof RejectRequest rejectRequest) {
-            Long declinerId = (Long) session.getAttributes().get(Constants.USER_ID.getValue());
+            Long declinerId = (Long) session.getAttributes().get(IdKey.USER_ID.getValue());
             Pair<Boolean, String> result = userConnectionService.reject(declinerId, rejectRequest.getInviterUsername());
 
             if (result.getFirst()) { // 초대 거절에 성공한 경우

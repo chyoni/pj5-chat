@@ -15,8 +15,8 @@ import org.springframework.web.socket.server.support.HttpSessionHandshakeInterce
 
 import java.util.Map;
 
-import static cwchoiit.chat.server.constants.Constants.HTTP_SESSION_ID;
-import static cwchoiit.chat.server.constants.Constants.USER_ID;
+import static cwchoiit.chat.server.constants.IdKey.HTTP_SESSION_ID;
+import static cwchoiit.chat.server.constants.IdKey.USER_ID;
 
 /**
  * This class is an implementation of {@link HttpSessionHandshakeInterceptor} responsible for intercepting

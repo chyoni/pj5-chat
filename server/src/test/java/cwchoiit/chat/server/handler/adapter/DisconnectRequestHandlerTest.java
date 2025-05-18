@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.handler.adapter;
 
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.DisconnectResponse;
@@ -67,7 +67,7 @@ class DisconnectRequestHandlerTest {
         long requestUserId = 1L;
         String peer = "peer";
 
-        attributes.put(Constants.USER_ID.getValue(), requestUserId);
+        attributes.put(IdKey.USER_ID.getValue(), requestUserId);
         when(mockSession.getAttributes()).thenReturn(attributes);
 
         when(userConnectionService.disconnect(eq(requestUserId), eq(peer)))
@@ -95,7 +95,7 @@ class DisconnectRequestHandlerTest {
         long requestUserId = 1L;
         String peer = "peer";
 
-        attributes.put(Constants.USER_ID.getValue(), requestUserId);
+        attributes.put(IdKey.USER_ID.getValue(), requestUserId);
         when(mockSession.getAttributes()).thenReturn(attributes);
 
         when(userConnectionService.disconnect(eq(requestUserId), eq(peer)))

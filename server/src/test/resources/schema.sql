@@ -28,3 +28,24 @@ create table if not exists user_connection
     updated_at        datetime    not null comment '수정 일자',
     primary key (partner_a_user_id, partner_b_user_id)
 );
+
+create table if not exists channel
+(
+    channel_id          bigint       not null auto_increment primary key,
+    title               varchar(100) not null comment '채널명',
+    channel_invite_code varchar(100) not null unique comment '채널 초대 코드',
+    created_at          datetime     not null comment '생성 일자',
+    updated_at          datetime     not null comment '수정 일자',
+    head_count          int          not null comment '참여 인원 수'
+);
+
+create table if not exists user_channel
+(
+    user_id           bigint   not null comment '유저 ID',
+    channel_id        bigint   not null comment '채널 ID',
+    last_read_msg_seq bigint   not null comment '마지막으로 읽은 메시지 번호',
+    created_at        datetime not null comment '생성 일자',
+    updated_at        datetime not null comment '수정 일자',
+    primary key (user_id, channel_id),
+    index idx_channel_id (channel_id)
+);

@@ -1,8 +1,9 @@
 package cwchoiit.chat.server.handler.adapter;
 
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.request.KeepAliveRequest;
+import cwchoiit.chat.server.service.ChannelService;
 import cwchoiit.chat.server.service.SessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import static cwchoiit.chat.server.constants.MessageType.KEEP_ALIVE;
 public class KeepAliveRequestHandler implements RequestHandler {
 
     private final SessionService sessionService;
+    private final ChannelService channelService;
 
     @Override
     public String messageType() {
@@ -26,9 +28,10 @@ public class KeepAliveRequestHandler implements RequestHandler {
     @Override
     public void handle(BaseRequest request, WebSocketSession session) {
         if (request instanceof KeepAliveRequest) {
-            sessionService.refreshTimeToLive(
-                    (String) session.getAttributes().get(Constants.HTTP_SESSION_ID.getValue())
-            );
+            String requestUserId = (String) session.getAttributes().get(IdKey.HTTP_SESSION_ID.getValue());
+
+            sessionService.refreshTimeToLive(requestUserId);
+            channelService.refreshActiveChannel(Long.parseLong(requestUserId));
         }
     }
 }

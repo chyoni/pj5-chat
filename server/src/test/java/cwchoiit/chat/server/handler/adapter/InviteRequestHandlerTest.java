@@ -1,7 +1,7 @@
 package cwchoiit.chat.server.handler.adapter;
 
 import cwchoiit.chat.server.SpringBootTestConfiguration;
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.handler.request.AcceptRequest;
 import cwchoiit.chat.server.handler.request.InviteRequest;
@@ -72,7 +72,7 @@ class InviteRequestHandlerTest extends SpringBootTestConfiguration {
         InviteRequest inviteRequest = new InviteRequest(inviteCode);
 
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put(Constants.USER_ID.getValue(), inviterUserId);
+        attributes.put(IdKey.USER_ID.getValue(), inviterUserId);
 
         when(mockSession.getAttributes()).thenReturn(attributes);
 
@@ -107,7 +107,7 @@ class InviteRequestHandlerTest extends SpringBootTestConfiguration {
         InviteRequest inviteRequest = new InviteRequest(inviteCode);
 
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put(Constants.USER_ID.getValue(), inviterUserId);
+        attributes.put(IdKey.USER_ID.getValue(), inviterUserId);
 
         when(mockSession.getAttributes()).thenReturn(attributes);
 

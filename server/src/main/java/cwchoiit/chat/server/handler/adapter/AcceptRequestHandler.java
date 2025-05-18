@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.handler.adapter;
 
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.handler.request.AcceptRequest;
 import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.response.AcceptNotificationResponse;
@@ -34,7 +34,7 @@ public class AcceptRequestHandler implements RequestHandler {
     @Override
     public void handle(BaseRequest request, WebSocketSession session) {
         if (request instanceof AcceptRequest acceptRequest) {
-            Long acceptorId = (Long) session.getAttributes().get(Constants.USER_ID.getValue());
+            Long acceptorId = (Long) session.getAttributes().get(IdKey.USER_ID.getValue());
             Pair<Optional<Long>, String> result = userConnectionService.accept(acceptorId, acceptRequest.getInviterUsername());
 
             result.getFirst().ifPresentOrElse(

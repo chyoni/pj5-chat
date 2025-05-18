@@ -1,6 +1,6 @@
 package cwchoiit.chat.server.handler.adapter;
 
-import cwchoiit.chat.server.constants.Constants;
+import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.request.InviteRequest;
@@ -35,7 +35,7 @@ public class InviteRequestHandler implements RequestHandler {
     @Override
     public void handle(BaseRequest request, WebSocketSession session) {
         if (request instanceof InviteRequest inviteRequest) {
-            Long inviterUserId = (Long) session.getAttributes().get(Constants.USER_ID.getValue());
+            Long inviterUserId = (Long) session.getAttributes().get(IdKey.USER_ID.getValue());
             Pair<Optional<Long>, String> result = userConnectionService.invite(inviterUserId, inviteRequest.getConnectionInviteCode());
 
             result.getFirst().ifPresentOrElse(partnerUserId -> {
