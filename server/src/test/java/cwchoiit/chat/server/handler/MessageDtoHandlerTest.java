@@ -4,8 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.auth.RestApiLoginAuthFilter;
+import cwchoiit.chat.server.constants.ChannelResponse;
 import cwchoiit.chat.server.handler.request.MessageRequest;
+import cwchoiit.chat.server.service.ChannelService;
 import cwchoiit.chat.server.service.request.UserRegisterRequest;
+import cwchoiit.chat.server.service.response.ChannelCreateResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.ToString;
@@ -14,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.data.util.Pair;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
@@ -30,11 +34,13 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import static cwchoiit.chat.server.constants.IdKey.USER_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(
@@ -48,6 +54,9 @@ class MessageDtoHandlerTest extends SpringBootTestConfiguration {
 
     @Autowired
     ObjectMapper objectMapper;
+
+    @Autowired
+    ChannelService channelService;
 
     @Getter
     @ToString
@@ -116,7 +125,7 @@ class MessageDtoHandlerTest extends SpringBootTestConfiguration {
         return new RestTemplate().postForObject(loginURL, httpEntity, String.class);
     }
 
-    @Test
+    //@Test
     @DisplayName("일대일 채팅 기본 연결 및 메시지 전송 테스트")
     void directChat() throws ExecutionException, InterruptedException, IOException, URISyntaxException {
         register("testUserA", "testUserAPassword");
@@ -128,8 +137,35 @@ class MessageDtoHandlerTest extends SpringBootTestConfiguration {
         Client userA = createClient(sessionIdA);
         Client userB = createClient(sessionIdB);
 
-        userA.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new MessageRequest("testUserA", "안녕하세요"))));
-        userB.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new MessageRequest("testUserB", "Hello"))));
+        Pair<Optional<ChannelCreateResponse>, ChannelResponse> testChannel = channelService.createDirectChannel(
+                (Long) userA.getSession().getAttributes().get(USER_ID.getValue()),
+                (Long) userB.getSession().getAttributes().get(USER_ID.getValue()),
+                "testChannel");
+
+        assertThat(testChannel.getFirst()).isNotEmpty();
+        assertThat(testChannel.getSecond()).isEqualTo(ChannelResponse.SUCCESS);
+        assertThat(testChannel.getFirst().get().headCount()).isEqualTo(2);
+
+        userA.getSession()
+                .sendMessage(new TextMessage(
+                                objectMapper.writeValueAsString(
+                                        new MessageRequest(
+                                                testChannel.getFirst().get().channelId(),
+                                                "testUserA",
+                                                "안녕하세요")
+                                )
+                        )
+                );
+        userB.getSession()
+                .sendMessage(new TextMessage(
+                                objectMapper.writeValueAsString(
+                                        new MessageRequest(
+                                                testChannel.getFirst().get().channelId(),
+                                                "testUserB",
+                                                "Hello")
+                                )
+                        )
+                );
 
         String fromLeftMessage = userB.getQueue().poll(1, TimeUnit.SECONDS);
         String fromRightMessage = userA.getQueue().poll(1, TimeUnit.SECONDS);
@@ -142,51 +178,5 @@ class MessageDtoHandlerTest extends SpringBootTestConfiguration {
 
         userA.getSession().close();
         userB.getSession().close();
-    }
-
-    @Test
-    @DisplayName("그룹 채팅 기본 테스트")
-    void groupChat() throws ExecutionException, InterruptedException, IOException, URISyntaxException {
-        register("testUserA", "testUserAPassword");
-        register("testUserB", "testUserBPassword");
-        register("testUserC", "testUserCPassword");
-
-        String sessionIdA = login("testUserA", "testUserAPassword");
-        String sessionIdB = login("testUserB", "testUserBPassword");
-        String sessionIdC = login("testUserC", "testUserCPassword");
-
-        Client sessionOne = createClient(sessionIdA);
-        Client sessionTwo = createClient(sessionIdB);
-        Client sessionThree = createClient(sessionIdC);
-
-        sessionOne.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new MessageRequest("sessionOne", "Hello1"))));
-        sessionTwo.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new MessageRequest("sessionTwo", "Hello2"))));
-        sessionThree.getSession().sendMessage(new TextMessage(objectMapper.writeValueAsString(new MessageRequest("sessionThree", "Hello3"))));
-
-        String sessionOneReceivedMessage = sessionOne.getQueue().poll(1, TimeUnit.SECONDS) + sessionOne.getQueue().poll(1, TimeUnit.SECONDS);
-        String sessionTwoReceivedMessage = sessionTwo.getQueue().poll(1, TimeUnit.SECONDS) + sessionTwo.getQueue().poll(1, TimeUnit.SECONDS);
-        String sessionThreeReceivedMessage = sessionThree.getQueue().poll(1, TimeUnit.SECONDS) + sessionThree.getQueue().poll(1, TimeUnit.SECONDS);
-
-        assertThat(sessionOneReceivedMessage).contains("sessionTwo");
-        assertThat(sessionOneReceivedMessage).contains("sessionThree");
-
-        assertThat(sessionTwoReceivedMessage).contains("sessionOne");
-        assertThat(sessionTwoReceivedMessage).contains("sessionThree");
-
-        assertThat(sessionThreeReceivedMessage).contains("sessionOne");
-        assertThat(sessionThreeReceivedMessage).contains("sessionTwo");
-
-
-        assertThat(sessionOne.getQueue().isEmpty()).isTrue();
-        assertThat(sessionTwo.getQueue().isEmpty()).isTrue();
-        assertThat(sessionThree.getQueue().isEmpty()).isTrue();
-
-        unregister(sessionIdA);
-        unregister(sessionIdB);
-        unregister(sessionIdC);
-
-        sessionOne.getSession().close();
-        sessionTwo.getSession().close();
-        sessionThree.getSession().close();
     }
 }

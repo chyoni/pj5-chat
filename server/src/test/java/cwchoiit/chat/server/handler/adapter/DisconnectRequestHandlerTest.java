@@ -49,7 +49,7 @@ class DisconnectRequestHandlerTest {
     void handle() {
         disconnectRequestHandler.handle(new InviteRequest("123"), mock(WebSocketSession.class));
         disconnectRequestHandler.handle(new KeepAliveRequest(), mock(WebSocketSession.class));
-        disconnectRequestHandler.handle(new MessageRequest("123", "123"), mock(WebSocketSession.class));
+        disconnectRequestHandler.handle(new MessageRequest(1L, "123", "123"), mock(WebSocketSession.class));
         disconnectRequestHandler.handle(new FetchConnectionsRequest(PENDING), mock(WebSocketSession.class));
         disconnectRequestHandler.handle(new FetchUserInviteCodeRequest(), mock(WebSocketSession.class));
         disconnectRequestHandler.handle(new RejectRequest("inviter"), mock(WebSocketSession.class));

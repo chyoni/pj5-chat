@@ -50,7 +50,7 @@ class RejectRequestHandlerTest {
         rejectRequestHandler.handle(new KeepAliveRequest(), mock(WebSocketSession.class));
         rejectRequestHandler.handle(new InviteRequest(""), mock(WebSocketSession.class));
         rejectRequestHandler.handle(new AcceptRequest("inviter"), mock(WebSocketSession.class));
-        rejectRequestHandler.handle(new MessageRequest("inviter", "message"), mock(WebSocketSession.class));
+        rejectRequestHandler.handle(new MessageRequest(1L,"inviter", "message"), mock(WebSocketSession.class));
         rejectRequestHandler.handle(new FetchConnectionsRequest(UserConnectionStatus.REJECTED), mock(WebSocketSession.class));
         rejectRequestHandler.handle(new FetchUserInviteCodeRequest(), mock(WebSocketSession.class));
 

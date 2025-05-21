@@ -50,7 +50,7 @@ class EnterChannelRequestHandlerTest {
     void handle() {
         enterChannelRequestHandler.handle(new InviteRequest("123"), mock(WebSocketSession.class));
         enterChannelRequestHandler.handle(new KeepAliveRequest(), mock(WebSocketSession.class));
-        enterChannelRequestHandler.handle(new MessageRequest("123", "123"), mock(WebSocketSession.class));
+        enterChannelRequestHandler.handle(new MessageRequest(1L, "123", "123"), mock(WebSocketSession.class));
         enterChannelRequestHandler.handle(new FetchConnectionsRequest(PENDING), mock(WebSocketSession.class));
         enterChannelRequestHandler.handle(new FetchUserInviteCodeRequest(), mock(WebSocketSession.class));
         enterChannelRequestHandler.handle(new RejectRequest("inviter"), mock(WebSocketSession.class));

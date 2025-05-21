@@ -20,15 +20,15 @@ public class Message extends BaseEntity {
     @Column(name = "message_sequence", nullable = false, unique = true)
     private Long messageSequence;
 
-    @Column(name = "username", nullable = false)
-    private String username;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Column(name = "content", nullable = false)
     private String content;
 
-    public static Message create(String username, String content) {
+    public static Message create(Long userId, String content) {
         Message message = new Message();
-        message.username = username;
+        message.userId = userId;
         message.content = content;
         return message;
     }

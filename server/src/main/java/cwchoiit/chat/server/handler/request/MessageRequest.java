@@ -9,6 +9,7 @@ import lombok.Getter;
 public class MessageRequest extends BaseRequest {
     private final String username;
     private final String content;
+    private final Long channelId;
 
     /**
      * {@link MessageRequest} 생성자.
@@ -20,13 +21,16 @@ public class MessageRequest extends BaseRequest {
      * 이 경우엔 생성자 기반으로 역직렬화하겠다는 힌트를 Jackson 에게 알려줘야 어떤 JSON 필드가 어떤 파라미터에 매핑되는지 알 수 있고
      * 그렇기 때문에 사용하는 애노테이션이다.
      *
-     * @param username the sender's username.
-     * @param content  the message content to be sent.
+     * @param channelId the channel id to be sent.
+     * @param username  the sender's username.
+     * @param content   the message content to be sent.
      */
     @JsonCreator
-    public MessageRequest(@JsonProperty("username") String username,
+    public MessageRequest(@JsonProperty("channelId") Long channelId,
+                          @JsonProperty("username") String username,
                           @JsonProperty("content") String content) {
         super(MessageType.MESSAGE);
+        this.channelId = channelId;
         this.username = username;
         this.content = content;
     }

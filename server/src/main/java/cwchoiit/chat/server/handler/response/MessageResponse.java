@@ -8,11 +8,13 @@ import static cwchoiit.chat.server.constants.MessageType.MESSAGE;
 @Getter
 @ToString
 public class MessageResponse extends BaseResponse {
+    private final Long channelId;
     private final String username;
     private final String content;
 
-    public MessageResponse(String username, String content) {
+    public MessageResponse(Long channelId, String username, String content) {
         super(MESSAGE);
+        this.channelId = channelId;
         this.username = username;
         this.content = content;
     }

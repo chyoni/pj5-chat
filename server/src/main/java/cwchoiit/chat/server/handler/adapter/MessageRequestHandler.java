@@ -1,16 +1,14 @@
 package cwchoiit.chat.server.handler.adapter;
 
-import cwchoiit.chat.server.entity.Message;
 import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.request.MessageRequest;
-import cwchoiit.chat.server.handler.response.MessageResponse;
-import cwchoiit.chat.server.repository.MessageRepository;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
+import cwchoiit.chat.server.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
+import static cwchoiit.chat.server.constants.IdKey.USER_ID;
 import static cwchoiit.chat.server.constants.MessageType.MESSAGE;
 
 @Slf4j
@@ -18,8 +16,7 @@ import static cwchoiit.chat.server.constants.MessageType.MESSAGE;
 @RequiredArgsConstructor
 public class MessageRequestHandler implements RequestHandler {
 
-    private final MessageRepository messageRepository;
-    private final WebSocketSessionManager sessionManager;
+    private final MessageService messageService;
 
     @Override
     public String messageType() {
@@ -29,15 +26,12 @@ public class MessageRequestHandler implements RequestHandler {
     @Override
     public void handle(BaseRequest request, WebSocketSession session) {
         if (request instanceof MessageRequest messageRequest) {
-            messageRepository.save(Message.create(messageRequest.getUsername(), messageRequest.getContent()));
-            sessionManager.getSessions().stream()
-                    .filter(s -> !s.getId().equals(session.getId()))
-                    .forEach(s ->
-                            sessionManager.sendMessage(
-                                    s,
-                                    new MessageResponse(messageRequest.getUsername(), messageRequest.getContent())
-                            )
-                    );
+            Long senderId = (Long) session.getAttributes().get(USER_ID.getValue());
+            messageService.sendMessage(
+                    messageRequest.getChannelId(),
+                    senderId,
+                    messageRequest.getContent()
+            );
         }
     }
 }

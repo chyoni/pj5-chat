@@ -48,11 +48,11 @@ class AcceptRequestHandlerTest extends SpringBootTestConfiguration {
     }
 
     @Test
-    @DisplayName("AcceptRequestHandler는 BaseRequest 인스턴스 타입이 AcceptRequest일때 처리할 수 있다.")
+    @DisplayName("AcceptRequestHandler는 BaseRequest 인스턴스 타입이 AcceptRequest 일때 처리할 수 있다.")
     void handle() {
         acceptRequestHandler.handle(new InviteRequest("123"), mock(WebSocketSession.class));
         acceptRequestHandler.handle(new KeepAliveRequest(), mock(WebSocketSession.class));
-        acceptRequestHandler.handle(new MessageRequest("123", "123"), mock(WebSocketSession.class));
+        acceptRequestHandler.handle(new MessageRequest(1L,"123", "123"), mock(WebSocketSession.class));
 
         verify(userConnectionService, never()).accept(anyLong(), anyString());
     }

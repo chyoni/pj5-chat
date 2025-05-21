@@ -21,9 +21,9 @@ class MessageTest extends SpringBootTestConfiguration {
     @Test
     @DisplayName("메시지 생성 팩토리 메서드 검증")
     void create() {
-        Message message = Message.create("test", "test");
+        Message message = Message.create(1L, "test");
 
-        assertThat(message.getUsername()).isEqualTo("test");
+        assertThat(message.getUserId()).isEqualTo(1);
         assertThat(message.getContent()).isEqualTo("test");
         assertThat(message.getCreatedAt()).isNull();
         assertThat(message.getUpdatedAt()).isNull();
@@ -32,21 +32,21 @@ class MessageTest extends SpringBootTestConfiguration {
     @Test
     @DisplayName("메시지가 생성되면, createdAt, updatedAt 자동 생성")
     void save() {
-        Message message = Message.create("test", "test");
+        Message message = Message.create(1L, "test");
 
         Message saved = messageRepository.save(message);
 
         assertThat(saved.getCreatedAt()).isNotNull();
         assertThat(saved.getUpdatedAt()).isNotNull();
-        assertThat(saved.getUsername()).isEqualTo(message.getUsername());
+        assertThat(saved.getUserId()).isEqualTo(message.getUserId());
         assertThat(saved.getContent()).isEqualTo(message.getContent());
     }
 
     @Test
     @DisplayName("메시지는 Sequence 값으로 동등 비교를 한다.")
     void equals() {
-        Message message1 = Message.create("test", "test1");
-        Message message2 = Message.create("test", "test2");
+        Message message1 = Message.create(1L, "test1");
+        Message message2 = Message.create(1L, "test2");
 
         assertThat(message1).isEqualTo(message2); // 둘 다 아직 sequence 값이 null 일것이므로
 
