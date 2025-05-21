@@ -2,40 +2,32 @@ package cwchoiit.chat.server.handler.adapter;
 
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.constants.MessageType;
-import cwchoiit.chat.server.entity.Message;
 import cwchoiit.chat.server.handler.request.AcceptRequest;
 import cwchoiit.chat.server.handler.request.InviteRequest;
 import cwchoiit.chat.server.handler.request.KeepAliveRequest;
 import cwchoiit.chat.server.handler.request.MessageRequest;
-import cwchoiit.chat.server.handler.response.MessageResponse;
-import cwchoiit.chat.server.repository.MessageRepository;
-import cwchoiit.chat.server.repository.UserRepository;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
-import org.assertj.core.api.Assertions;
+import cwchoiit.chat.server.service.MessageService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import org.springframework.transaction.annotation.Transactional;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.socket.WebSocketSession;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Map;
+
+import static cwchoiit.chat.server.constants.IdKey.USER_ID;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-@Transactional
-@SpringBootTest
+@ExtendWith(MockitoExtension.class)
 @DisplayName("Handler Adapter - MessageRequestHandler")
 class MessageRequestHandlerTest extends SpringBootTestConfiguration {
 
-    @MockitoSpyBean
-    MessageRepository messageRepository;
-
-    @MockitoSpyBean
-    WebSocketSessionManager sessionManager;
-
-    @Autowired
+    @Mock
+    MessageService messageService;
+    @InjectMocks
     MessageRequestHandler messageRequestHandler;
 
     @Test
@@ -52,36 +44,20 @@ class MessageRequestHandlerTest extends SpringBootTestConfiguration {
         messageRequestHandler.handle(new InviteRequest(""), mock(WebSocketSession.class));
         messageRequestHandler.handle(new AcceptRequest("inviter"), mock(WebSocketSession.class));
 
-        verify(messageRepository, never()).save(any(Message.class));
+        verify(messageService, never()).sendMessage(anyLong(), anyLong(), anyString());
     }
 
     @Test
     @DisplayName("MessageRequest가 들어오면, 로직이 수행된다.")
     void handle_success() {
-        messageRequestHandler.handle(new MessageRequest("test", "test"), mock(WebSocketSession.class));
+        WebSocketSession mock = mock(WebSocketSession.class);
+        Map<String, Object> attributes = mock.getAttributes();
+        attributes.put(USER_ID.getValue(), 1L);
+        when(mock.getAttributes()).thenReturn(attributes);
 
-        verify(messageRepository, times(1)).save(any(Message.class));
-        verify(sessionManager, times(1)).getSessions();
-    }
+        messageRequestHandler.handle(new MessageRequest(1L, "test", "test"), mock);
 
-    @Test
-    @DisplayName("MessageRequest가 들어오면, 저장되어 있는 세션들에게 (본인을 제외하고) 메시지를 보낸다.")
-    void handle_success2() {
-        WebSocketSession mockSession1 = mock(WebSocketSession.class);
-        WebSocketSession mockSession2 = mock(WebSocketSession.class);
-
-        when(mockSession1.getId()).thenReturn("session1");
-        when(mockSession2.getId()).thenReturn("session2");
-
-        sessionManager.storeSession(1L, mockSession1);
-        sessionManager.storeSession(2L, mockSession2);
-
-        messageRequestHandler.handle(new MessageRequest("test", "test"), mockSession1);
-
-        verify(sessionManager, times(1)).getSessions();
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mockSession2), any(MessageResponse.class));
-        verify(sessionManager, never())
-                .sendMessage(eq(mockSession1), any(MessageResponse.class));
+        verify(messageService, times(1))
+                .sendMessage(eq(1L), eq(1L), eq("test"));
     }
 }

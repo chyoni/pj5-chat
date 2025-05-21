@@ -6,6 +6,7 @@ import cwchoiit.chat.server.entity.UserChannel;
 import cwchoiit.chat.server.repository.ChannelRepository;
 import cwchoiit.chat.server.repository.UserChannelRepository;
 import cwchoiit.chat.server.service.response.ChannelCreateResponse;
+import cwchoiit.chat.server.service.response.ChannelParticipantResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -70,6 +71,20 @@ public class ChannelService {
 
     public boolean isJoined(Long channelId, Long userId) {
         return userChannelRepository.existsByUserIdAndChannelId(userId, channelId);
+    }
+
+    public boolean isOnline(Long userId, Long channelId) {
+        String activeChannel = redisTemplate.opsForValue().get(generateKey(userId));
+        if (activeChannel == null) {
+            return false;
+        }
+        return activeChannel.equals(channelId.toString());
+    }
+
+    public List<ChannelParticipantResponse> findParticipantIds(Long channelId) {
+        return userChannelRepository.findUserIdsByChannelId(channelId).stream()
+                .map(ChannelParticipantResponse::of)
+                .toList();
     }
 
     public void setActiveChannel(Long userId, Long channelId) {

@@ -13,19 +13,20 @@ import java.io.IOException;
 @TestConfiguration
 public class EmbeddedRedis {
 
-    private final RedisServer redisServer;
-
-    public EmbeddedRedis() throws IOException {
-        this.redisServer = new RedisServer(63790);
-    }
+    private static RedisServer redisServer;
 
     @PostConstruct
-    public void start() throws IOException {
-        this.redisServer.start();
+    public void startRedis() throws IOException {
+        if (redisServer == null || !redisServer.isActive()) {
+            redisServer = new RedisServer(63790);
+            redisServer.start();
+        }
     }
 
     @PreDestroy
-    public void stop() throws IOException {
-        this.redisServer.stop();
+    public void stopRedis() throws IOException {
+        if (redisServer != null && redisServer.isActive()) {
+            redisServer.stop();
+        }
     }
 }

@@ -1,10 +1,10 @@
 package cwchoiit.chat.server.service;
 
-import cwchoiit.chat.server.EmbeddedRedis;
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.constants.ChannelResponse;
 import cwchoiit.chat.server.repository.UserChannelRepository;
 import cwchoiit.chat.server.service.response.ChannelCreateResponse;
+import cwchoiit.chat.server.service.response.ChannelParticipantResponse;
 import nl.altindag.log.LogCaptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,12 +12,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.util.Pair;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -29,7 +29,6 @@ import static org.mockito.Mockito.*;
 
 @Transactional
 @SpringBootTest
-@Import(EmbeddedRedis.class)
 @DisplayName("Service - ChannelService")
 class ChannelServiceTest extends SpringBootTestConfiguration {
 
@@ -140,5 +139,42 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
 
         verify(redisTemplate, times(1))
                 .expire(eq("chat:user_id:%s:channel".formatted(1)), anyLong(), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    @DisplayName("유저의 활성 채널이 없는 경우, 온라인 상태를 false로 반환한다.")
+    void isOnline() {
+        boolean online = channelService.isOnline(100L, 1L);
+        assertThat(online).isFalse();
+    }
+
+    @Test
+    @DisplayName("유저의 활성 채널이 있는 경우, 온라인 상태를 true로 반환한다.")
+    void isOnline2() {
+        redisTemplate.opsForValue().set("chat:user_id:%s:channel".formatted(1L), "1");
+        boolean online = channelService.isOnline(1L, 1L);
+        assertThat(online).isTrue();
+    }
+
+    @Test
+    @DisplayName("채널 참여자가 없는 경우, 빈 리스트를 반환한다.")
+    void findParticipantIds() {
+        List<ChannelParticipantResponse> participantIds = channelService.findParticipantIds(100L);
+        assertThat(participantIds).isEmpty();
+    }
+
+    @Test
+    @DisplayName("채널 참여자가 있는 경우, 해당 참여자의 정보를 반환한다.")
+    void findParticipantIds2() {
+        Pair<Optional<ChannelCreateResponse>, ChannelResponse> channel =
+                channelService.createDirectChannel(1L, 2L, "Channel");
+
+        List<ChannelParticipantResponse> participantIds = channelService.findParticipantIds(channel.getFirst().orElseThrow().channelId());
+
+        assertThat(participantIds).isNotEmpty();
+        assertThat(participantIds.size()).isEqualTo(2);
+        assertThat(participantIds)
+                .extracting(ChannelParticipantResponse::userId)
+                .containsExactlyInAnyOrder(1L, 2L);
     }
 }

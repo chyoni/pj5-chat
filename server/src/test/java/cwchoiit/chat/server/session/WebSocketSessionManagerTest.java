@@ -125,7 +125,7 @@ class WebSocketSessionManagerTest {
         WebSocketSession mockSession = mock(WebSocketSession.class);
         webSocketSessionManager.storeSession(1L, mockSession);
 
-        MessageResponse baseResponse = new MessageResponse("inviter", "message");
+        MessageResponse baseResponse = new MessageResponse(1L, "inviter", "message");
         webSocketSessionManager.sendMessage(mockSession, baseResponse);
 
         verify(mockSession, times(1))
@@ -138,7 +138,7 @@ class WebSocketSessionManagerTest {
         WebSocketSession mockSession = mock(WebSocketSession.class);
         webSocketSessionManager.storeSession(1L, mockSession);
 
-        MessageResponse baseResponse = new MessageResponse("inviter", "message");
+        MessageResponse baseResponse = new MessageResponse(1L, "inviter", "message");
 
         doThrow(new IOException("test exception"))
                 .when(mockSession)

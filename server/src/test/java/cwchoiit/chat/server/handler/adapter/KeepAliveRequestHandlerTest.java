@@ -43,7 +43,7 @@ class KeepAliveRequestHandlerTest {
     @Test
     @DisplayName("KeepRequestHandler는 BaseRequest 인스턴스 타입이 KeepAliveRequest일 때 처리할 수 있다.")
     void handle() {
-        keepAliveRequestHandler.handle(new MessageRequest("test", "test"), mock(WebSocketSession.class));
+        keepAliveRequestHandler.handle(new MessageRequest(1L, "test", "test"), mock(WebSocketSession.class));
         keepAliveRequestHandler.handle(new InviteRequest(""), mock(WebSocketSession.class));
         keepAliveRequestHandler.handle(new AcceptRequest("inviter"), mock(WebSocketSession.class));
 
