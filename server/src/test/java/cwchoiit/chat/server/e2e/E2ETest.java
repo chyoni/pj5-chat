@@ -1,17 +1,21 @@
-package cwchoiit.chat.server.handler;
+package cwchoiit.chat.server.e2e;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import cwchoiit.chat.common.serializer.Serializer;
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.auth.RestApiLoginAuthFilter;
 import cwchoiit.chat.server.constants.ChannelResponse;
-import cwchoiit.chat.server.handler.request.MessageRequest;
 import cwchoiit.chat.server.service.ChannelService;
+import cwchoiit.chat.server.service.MessageService;
+import cwchoiit.chat.server.service.UserService;
 import cwchoiit.chat.server.service.request.UserRegisterRequest;
 import cwchoiit.chat.server.service.response.ChannelCreateResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,31 +44,24 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import static cwchoiit.chat.server.constants.IdKey.USER_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
-)
+@Slf4j
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Transactional
-class MessageDtoHandlerTest extends SpringBootTestConfiguration {
+class E2ETest extends SpringBootTestConfiguration {
 
     @LocalServerPort
     int port;
 
     @Autowired
     ObjectMapper objectMapper;
-
+    @Autowired
+    UserService userService;
     @Autowired
     ChannelService channelService;
-
-    @Getter
-    @ToString
-    @AllArgsConstructor
-    static class Client {
-        private BlockingQueue<String> queue;
-        private WebSocketSession session;
-    }
+    @Autowired
+    MessageService messageService;
 
     Client createClient(String sessionId) throws ExecutionException, InterruptedException, URISyntaxException {
         String url = String.format("ws://localhost:%d/ws/v1/message", port);
@@ -125,58 +122,83 @@ class MessageDtoHandlerTest extends SpringBootTestConfiguration {
         return new RestTemplate().postForObject(loginURL, httpEntity, String.class);
     }
 
-    //@Test
+    @Test
     @DisplayName("일대일 채팅 기본 연결 및 메시지 전송 테스트")
     void directChat() throws ExecutionException, InterruptedException, IOException, URISyntaxException {
+        // 회원 가입
         register("testUserA", "testUserAPassword");
         register("testUserB", "testUserBPassword");
 
+        // 유저 조회
+        Long userAId = userService.findUserIdByUsername("testUserA").orElseThrow();
+        Long userBId = userService.findUserIdByUsername("testUserB").orElseThrow();
+
+        // 로그인
         String sessionIdA = login("testUserA", "testUserAPassword");
         String sessionIdB = login("testUserB", "testUserBPassword");
 
+        // 로그인 한 유저로 클라이언트 만들기
         Client userA = createClient(sessionIdA);
         Client userB = createClient(sessionIdB);
 
-        Pair<Optional<ChannelCreateResponse>, ChannelResponse> testChannel = channelService.createDirectChannel(
-                (Long) userA.getSession().getAttributes().get(USER_ID.getValue()),
-                (Long) userB.getSession().getAttributes().get(USER_ID.getValue()),
-                "testChannel");
+        // 유저끼리 채팅 만들기
+        Pair<Optional<ChannelCreateResponse>, ChannelResponse> testChannel =
+                channelService.createDirectChannel(userAId, userBId, "testChannel");
 
+        // 채널 관련 검증
         assertThat(testChannel.getFirst()).isNotEmpty();
         assertThat(testChannel.getSecond()).isEqualTo(ChannelResponse.SUCCESS);
         assertThat(testChannel.getFirst().get().headCount()).isEqualTo(2);
 
-        userA.getSession()
-                .sendMessage(new TextMessage(
-                                objectMapper.writeValueAsString(
-                                        new MessageRequest(
-                                                testChannel.getFirst().get().channelId(),
-                                                "testUserA",
-                                                "안녕하세요")
-                                )
-                        )
-                );
-        userB.getSession()
-                .sendMessage(new TextMessage(
-                                objectMapper.writeValueAsString(
-                                        new MessageRequest(
-                                                testChannel.getFirst().get().channelId(),
-                                                "testUserB",
-                                                "Hello")
-                                )
-                        )
-                );
+        // 채널에 유저들 진입
+        channelService.enter(userAId, testChannel.getFirst().get().channelId());
+        channelService.enter(userBId, testChannel.getFirst().get().channelId());
 
-        String fromLeftMessage = userB.getQueue().poll(1, TimeUnit.SECONDS);
-        String fromRightMessage = userA.getQueue().poll(1, TimeUnit.SECONDS);
+        // 메시지 전송
+        messageService.sendMessage(testChannel.getFirst().get().channelId(), userAId, "Im A");
+        messageService.sendMessage(testChannel.getFirst().get().channelId(), userBId, "Im B");
 
-        assertThat(fromLeftMessage).contains("안녕하세요");
-        assertThat(fromRightMessage).contains("Hello");
+        // 메시지 획득
+        String fromUserAMessage = userB.getQueue().poll(1, TimeUnit.SECONDS);
+        String fromUserBMessage = userA.getQueue().poll(1, TimeUnit.SECONDS);
 
+        // 메시지 역직렬화
+        MessageResponse messageResFromA = Serializer.deserialize(fromUserAMessage, MessageResponse.class).orElseThrow();
+        MessageResponse messageResFromB = Serializer.deserialize(fromUserBMessage, MessageResponse.class).orElseThrow();
+
+        // 메시지 획득 내용 검증
+        assertThat(messageResFromA.getContent()).isEqualTo("Im A");
+        assertThat(messageResFromA.getUsername()).isEqualTo("testUserA");
+        assertThat(messageResFromA.getChannelId()).isEqualTo(1);
+        assertThat(messageResFromB.getContent()).isEqualTo("Im B");
+        assertThat(messageResFromB.getUsername()).isEqualTo("testUserB");
+        assertThat(messageResFromB.getChannelId()).isEqualTo(1);
+
+        // 회원 탈퇴
         unregister(sessionIdA);
         unregister(sessionIdB);
 
+        // 회원 탈퇴 후 세션 닫기
         userA.getSession().close();
         userB.getSession().close();
+    }
+
+    @Getter
+    @ToString
+    @AllArgsConstructor
+    static class Client {
+        private BlockingQueue<String> queue;
+        private WebSocketSession session;
+    }
+
+    @Getter
+    @ToString
+    @AllArgsConstructor
+    @NoArgsConstructor
+    static class MessageResponse {
+        private final String type = "MESSAGE";
+        private Long channelId;
+        private String username;
+        private String content;
     }
 }
