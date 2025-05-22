@@ -2,6 +2,7 @@ package cwchoiit.chat.server.service;
 
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.constants.ChannelResponse;
+import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.repository.UserChannelRepository;
 import cwchoiit.chat.server.service.response.ChannelCreateResponse;
 import cwchoiit.chat.server.service.response.ChannelParticipantResponse;
@@ -22,6 +23,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static cwchoiit.chat.server.constants.ChannelResponse.INVALID_ARGS;
+import static cwchoiit.chat.server.constants.ChannelResponse.NOT_ALLOWED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,14 +34,14 @@ import static org.mockito.Mockito.*;
 @DisplayName("Service - ChannelService")
 class ChannelServiceTest extends SpringBootTestConfiguration {
 
-    @Autowired
-    ChannelService channelService;
-
+    @MockitoSpyBean
+    UserConnectionService userConnectionService;
     @MockitoSpyBean
     StringRedisTemplate redisTemplate;
-
     @MockitoSpyBean
     UserChannelRepository userChannelRepository;
+    @Autowired
+    ChannelService channelService;
 
     LogCaptor logCaptor;
 
@@ -74,8 +76,25 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
     }
 
     @Test
+    @DisplayName("초대자와 연결된 사용자가 아닌 경우, 채널 생성에 실패한다.")
+    void createDirectChannel_failed() {
+        when(userConnectionService.findStatus(eq(1L), eq(2L)))
+                .thenReturn(UserConnectionStatus.REJECTED);
+
+        Pair<Optional<ChannelCreateResponse>, ChannelResponse> result =
+                channelService.createDirectChannel(1L, 2L, "failed");
+
+        assertThat(logCaptor.getWarnLogs()).anyMatch(log -> log.contains("Create direct channel failed. Creator and participant are not connected."));
+        assertThat(result.getFirst()).isEmpty();
+        assertThat(result.getSecond()).isEqualTo(NOT_ALLOWED);
+    }
+
+    @Test
     @DisplayName("채널 생성에 성공한다.")
     void createDirectChannel_success() {
+        when(userConnectionService.findStatus(eq(1L), eq(2L)))
+                .thenReturn(UserConnectionStatus.ACCEPTED);
+
         Pair<Optional<ChannelCreateResponse>, ChannelResponse> result =
                 channelService.createDirectChannel(1L, 2L, "Channel");
 
@@ -115,6 +134,9 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
     @Test
     @DisplayName("채널 입장에 성공하면, 레디스에 채널 ID를 캐싱한다.")
     void enter3() {
+        when(userConnectionService.findStatus(eq(1L), eq(2L)))
+                .thenReturn(UserConnectionStatus.ACCEPTED);
+
         Pair<Optional<ChannelCreateResponse>, ChannelResponse> createResult =
                 channelService.createDirectChannel(1L, 2L, "Channel");
 
@@ -166,6 +188,9 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
     @Test
     @DisplayName("채널 참여자가 있는 경우, 해당 참여자의 정보를 반환한다.")
     void findParticipantIds2() {
+        when(userConnectionService.findStatus(eq(1L), eq(2L)))
+                .thenReturn(UserConnectionStatus.ACCEPTED);
+
         Pair<Optional<ChannelCreateResponse>, ChannelResponse> channel =
                 channelService.createDirectChannel(1L, 2L, "Channel");
 

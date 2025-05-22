@@ -3,6 +3,7 @@ package cwchoiit.chat.client.handler;
 import cwchoiit.chat.client.messages.BaseReceiveMessage;
 import cwchoiit.chat.client.messages.receive.*;
 import cwchoiit.chat.client.service.TerminalService;
+import cwchoiit.chat.client.service.UserService;
 import cwchoiit.chat.common.serializer.Serializer;
 import lombok.RequiredArgsConstructor;
 
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 public class ReceiveMessageHandler {
 
     private final TerminalService terminalService;
+    private final UserService userService;
 
     public void handle(String payload) {
         Serializer.deserialize(payload, BaseReceiveMessage.class)
@@ -27,9 +29,7 @@ public class ReceiveMessageHandler {
             terminalService.printSystemMessage("Your invite code is: %s".formatted(receivedMessage.getInviteCode()));
         }
         if (message instanceof InviteReceiveMessage receivedMessage) {
-            terminalService.printSystemMessage(
-                    "Invite %s, result: %s".formatted(receivedMessage.getConnectionInviteCode(), receivedMessage.getStatus())
-            );
+            terminalService.printSystemMessage("Invite %s, result: %s".formatted(receivedMessage.getConnectionInviteCode(), receivedMessage.getStatus()));
         }
         if (message instanceof InviteNotificationReceiveMessage receivedMessage) {
             terminalService.printSystemMessage("Do you accept the invite from %s?".formatted(receivedMessage.getUsername()));
@@ -41,14 +41,10 @@ public class ReceiveMessageHandler {
             terminalService.printSystemMessage("Connection accepted by %s.".formatted(receivedMessage.getUsername()));
         }
         if (message instanceof RejectReceiveMessage receivedMessage) {
-            terminalService.printSystemMessage(
-                    "Connection rejected with %s. status: %s".formatted(receivedMessage.getUsername(), receivedMessage.getStatus())
-            );
+            terminalService.printSystemMessage("Connection rejected with %s. status: %s".formatted(receivedMessage.getUsername(), receivedMessage.getStatus()));
         }
         if (message instanceof DisconnectReceiveMessage receivedMessage) {
-            terminalService.printSystemMessage(
-                    "Connection disconnected with %s. status: %s".formatted(receivedMessage.getUsername(), receivedMessage.getStatus())
-            );
+            terminalService.printSystemMessage("Connection disconnected with %s. status: %s".formatted(receivedMessage.getUsername(), receivedMessage.getStatus()));
         }
         if (message instanceof FetchConnectionsReceiveMessage receivedMessage) {
             if (receivedMessage.getConnections().isEmpty()) {
@@ -58,6 +54,16 @@ public class ReceiveMessageHandler {
                         terminalService.printSystemMessage("%s : %s".formatted(connection.username(), connection.status()))
                 );
             }
+        }
+        if (message instanceof CreateChannelReceiveMessage receivedMessage) {
+            terminalService.printSystemMessage("Channel created. Channel ID: %s".formatted(receivedMessage.getChannelId()));
+        }
+        if (message instanceof ChannelJoinNotificationReceiveMessage receivedMessage) {
+            terminalService.printSystemMessage("Join channel [%s], channel ID: %s".formatted(receivedMessage.getTitle(), receivedMessage.getChannelId()));
+        }
+        if (message instanceof EnterChannelReceiveMessage receivedMessage) {
+            userService.moveToChannel(receivedMessage.getChannelId());
+            terminalService.printSystemMessage("Enter channel [%s], channel ID: %s".formatted(receivedMessage.getTitle(), receivedMessage.getChannelId()));
         }
         if (message instanceof ErrorReceiveMessage receivedMessage) {
             terminalService.printSystemMessage("Error: %s".formatted(receivedMessage.getMessage()));

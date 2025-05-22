@@ -50,7 +50,7 @@ class FetchUserInviteCodeRequestHandlerTest {
         fetchUserInviteCodeRequestHandler.handle(new KeepAliveRequest(), mock(WebSocketSession.class));
         fetchUserInviteCodeRequestHandler.handle(new InviteRequest(""), mock(WebSocketSession.class));
         fetchUserInviteCodeRequestHandler.handle(new AcceptRequest("inviter"), mock(WebSocketSession.class));
-        fetchUserInviteCodeRequestHandler.handle(new MessageRequest(1L, "inviter", "message"), mock(WebSocketSession.class));
+        fetchUserInviteCodeRequestHandler.handle(new MessageRequest(1L, "message"), mock(WebSocketSession.class));
         fetchUserInviteCodeRequestHandler.handle(new FetchConnectionsRequest(UserConnectionStatus.REJECTED), mock(WebSocketSession.class));
         fetchUserInviteCodeRequestHandler.handle(new RejectRequest("inviter"), mock(WebSocketSession.class));
 

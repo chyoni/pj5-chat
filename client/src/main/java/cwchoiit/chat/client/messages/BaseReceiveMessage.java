@@ -25,6 +25,9 @@ import static cwchoiit.chat.client.constants.MessageType.*;
         @JsonSubTypes.Type(value = DisconnectReceiveMessage.class, name = DISCONNECT_RESPONSE),
         @JsonSubTypes.Type(value = ChatMessageReceiveMessage.class, name = MESSAGE),
         @JsonSubTypes.Type(value = RejectReceiveMessage.class, name = REJECT_RESPONSE),
+        @JsonSubTypes.Type(value = CreateChannelReceiveMessage.class, name = CHANNEL_CREATE_RESPONSE),
+        @JsonSubTypes.Type(value = ChannelJoinNotificationReceiveMessage.class, name = NOTIFY_CHANNEL_JOIN),
+        @JsonSubTypes.Type(value = EnterChannelReceiveMessage.class, name = ENTER_CHANNEL_RESPONSE),
 })
 @RequiredArgsConstructor
 public abstract class BaseReceiveMessage {

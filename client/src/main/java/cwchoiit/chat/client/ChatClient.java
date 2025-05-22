@@ -7,6 +7,7 @@ import cwchoiit.chat.client.handler.WebSocketSenderHandler;
 import cwchoiit.chat.client.messages.send.ChatMessageSendMessage;
 import cwchoiit.chat.client.service.RestApiService;
 import cwchoiit.chat.client.service.TerminalService;
+import cwchoiit.chat.client.service.UserService;
 import cwchoiit.chat.client.service.WebSocketService;
 
 public class ChatClient {
@@ -16,18 +17,21 @@ public class ChatClient {
         final String WEBSOCKET_ENDPOINT = "/ws/v1/message";
 
         TerminalService terminalService = TerminalService.create();
-        ReceiveMessageHandler receiveMessageHandler = new ReceiveMessageHandler(terminalService);
+        UserService userService = new UserService();
+        ReceiveMessageHandler receiveMessageHandler = new ReceiveMessageHandler(terminalService, userService);
 
         RestApiService restApiService = new RestApiService(terminalService, BASE_URL);
         WebSocketSenderHandler webSocketSenderHandler = new WebSocketSenderHandler(terminalService);
         WebSocketService webSocketService = new WebSocketService(
                 terminalService,
+                userService,
                 webSocketSenderHandler,
                 BASE_URL,
                 WEBSOCKET_ENDPOINT
         );
         webSocketService.setReceiverHandler(new WebSocketReceiverHandler(receiveMessageHandler));
-        CommandHandler commandHandler = new CommandHandler(restApiService, webSocketService, terminalService);
+        CommandHandler commandHandler = new CommandHandler(restApiService, webSocketService, terminalService, userService);
+        terminalService.printSystemMessage("'/help' Help for commands. ex) /help");
 
         while (true) {
             String input = terminalService.readLine("Enter message:").trim();
@@ -40,9 +44,14 @@ public class ChatClient {
                     break;
                 }
 
-            } else if (!input.isEmpty()) {
-                terminalService.printMessage("[Me]", input);
-                webSocketService.sendMessage(new ChatMessageSendMessage("[Client]", input));
+            } else if (userService.isInChannel() && !input.isEmpty()) {
+                // 내가 보낸 메세지 (내 화면에도 찍어야 하니까)
+                terminalService.printMessage(userService.getUsername(), input);
+
+                // 연결된 상대방에게 보낼 메세지
+                webSocketService.sendMessage(new ChatMessageSendMessage(userService.getChannelId(), input));
+            } else {
+                terminalService.printSystemMessage("Invalid message: %s".formatted(input));
             }
         }
     }

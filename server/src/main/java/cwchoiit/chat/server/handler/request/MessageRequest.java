@@ -7,7 +7,6 @@ import lombok.Getter;
 
 @Getter
 public class MessageRequest extends BaseRequest {
-    private final String username;
     private final String content;
     private final Long channelId;
 
@@ -27,11 +26,9 @@ public class MessageRequest extends BaseRequest {
      */
     @JsonCreator
     public MessageRequest(@JsonProperty("channelId") Long channelId,
-                          @JsonProperty("username") String username,
                           @JsonProperty("content") String content) {
         super(MessageType.MESSAGE);
         this.channelId = channelId;
-        this.username = username;
         this.content = content;
     }
 }

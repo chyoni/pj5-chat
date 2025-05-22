@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class WebSocketService {
     private final TerminalService terminalService;
+    private final UserService userService;
     private final WebSocketSenderHandler senderHandler;
     private final String webSocketUrl;
 
@@ -77,8 +78,13 @@ public class WebSocketService {
      */
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
-    public WebSocketService(TerminalService terminalService, WebSocketSenderHandler senderHandler, String url, String endpoint) {
+    public WebSocketService(TerminalService terminalService,
+                            UserService userService,
+                            WebSocketSenderHandler senderHandler,
+                            String url,
+                            String endpoint) {
         this.terminalService = terminalService;
+        this.userService = userService;
         this.senderHandler = senderHandler;
         this.webSocketUrl = "ws://" + url + endpoint;
     }
@@ -109,7 +115,7 @@ public class WebSocketService {
         try {
             // WebSocket 연결 후 연결된 WebSocket 세션을 저장
             session = clientManager.connectToServer(
-                    new WebSocketSessionHandler(terminalService, this),
+                    new WebSocketSessionHandler(terminalService, this, userService),
                     clientEndpointConfig,
                     new URI(webSocketUrl)
             );
