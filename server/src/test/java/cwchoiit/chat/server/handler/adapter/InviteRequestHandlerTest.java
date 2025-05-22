@@ -54,7 +54,7 @@ class InviteRequestHandlerTest extends SpringBootTestConfiguration {
     @Test
     @DisplayName("InviteRequestHandler는 BaseRequest 인스턴스 타입이 InviteRequest일 때 처리할 수 있다.")
     void handle() {
-        inviteRequestHandler.handle(new MessageRequest(1L, "test", "test"), mock(WebSocketSession.class));
+        inviteRequestHandler.handle(new MessageRequest(1L, "test"), mock(WebSocketSession.class));
         inviteRequestHandler.handle(new KeepAliveRequest(), mock(WebSocketSession.class));
         inviteRequestHandler.handle(new AcceptRequest("inviter"), mock(WebSocketSession.class));
 

@@ -28,10 +28,11 @@ public class KeepAliveRequestHandler implements RequestHandler {
     @Override
     public void handle(BaseRequest request, WebSocketSession session) {
         if (request instanceof KeepAliveRequest) {
-            String requestUserId = (String) session.getAttributes().get(IdKey.HTTP_SESSION_ID.getValue());
+            String callerSessionId = (String) session.getAttributes().get(IdKey.HTTP_SESSION_ID.getValue());
+            Long callerUserId = (Long) session.getAttributes().get(IdKey.USER_ID.getValue());
 
-            sessionService.refreshTimeToLive(requestUserId);
-            channelService.refreshActiveChannel(Long.parseLong(requestUserId));
+            sessionService.refreshTimeToLive(callerSessionId);
+            channelService.refreshActiveChannel(callerUserId);
         }
     }
 }

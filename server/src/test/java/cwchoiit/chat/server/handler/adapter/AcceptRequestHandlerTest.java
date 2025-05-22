@@ -52,7 +52,7 @@ class AcceptRequestHandlerTest extends SpringBootTestConfiguration {
     void handle() {
         acceptRequestHandler.handle(new InviteRequest("123"), mock(WebSocketSession.class));
         acceptRequestHandler.handle(new KeepAliveRequest(), mock(WebSocketSession.class));
-        acceptRequestHandler.handle(new MessageRequest(1L,"123", "123"), mock(WebSocketSession.class));
+        acceptRequestHandler.handle(new MessageRequest(1L, "123"), mock(WebSocketSession.class));
 
         verify(userConnectionService, never()).accept(anyLong(), anyString());
     }

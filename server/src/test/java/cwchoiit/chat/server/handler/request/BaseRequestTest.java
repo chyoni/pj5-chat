@@ -40,7 +40,7 @@ class BaseRequestTest {
     @DisplayName("BaseRequest 클래스가 MESSAGE 타입으로 메시지가 들어오는 경우 역직렬화 정상 처리")
     void deserialize3() {
         BaseRequest baseRequest = Serializer.deserialize(
-                "{\"type\":\"MESSAGE\", \"username\": \"user1\", \"content\": \"Hello!\"}",
+                "{\"type\":\"MESSAGE\", \"content\": \"Hello!\"}",
                 BaseRequest.class
         ).orElseThrow();
 
@@ -48,7 +48,6 @@ class BaseRequestTest {
         assertThat(baseRequest).isInstanceOf(MessageRequest.class);
 
         MessageRequest messageRequest = (MessageRequest) baseRequest;
-        assertThat(messageRequest.getUsername()).isEqualTo("user1");
         assertThat(messageRequest.getContent()).isEqualTo("Hello!");
     }
 

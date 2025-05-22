@@ -55,7 +55,7 @@ class MessageRequestHandlerTest extends SpringBootTestConfiguration {
         attributes.put(USER_ID.getValue(), 1L);
         when(mock.getAttributes()).thenReturn(attributes);
 
-        messageRequestHandler.handle(new MessageRequest(1L, "test", "test"), mock);
+        messageRequestHandler.handle(new MessageRequest(1L, "test"), mock);
 
         verify(messageService, times(1))
                 .sendMessage(eq(1L), eq(1L), eq("test"));

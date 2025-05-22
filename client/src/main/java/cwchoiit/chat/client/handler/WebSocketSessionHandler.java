@@ -1,6 +1,7 @@
 package cwchoiit.chat.client.handler;
 
 import cwchoiit.chat.client.service.TerminalService;
+import cwchoiit.chat.client.service.UserService;
 import cwchoiit.chat.client.service.WebSocketService;
 import jakarta.websocket.CloseReason;
 import jakarta.websocket.Endpoint;
@@ -30,6 +31,7 @@ public class WebSocketSessionHandler extends Endpoint {
 
     private final TerminalService terminalService;
     private final WebSocketService webSocketService;
+    private final UserService userService;
 
     @Override
     public void onOpen(Session session, EndpointConfig endpointConfig) {
@@ -38,6 +40,7 @@ public class WebSocketSessionHandler extends Endpoint {
 
     @Override
     public void onClose(Session session, CloseReason closeReason) {
+        userService.logout();
         webSocketService.closeSession();
         terminalService.printSystemMessage("WebSocket session close. Reason: " + closeReason.getReasonPhrase());
     }

@@ -1,6 +1,7 @@
 package cwchoiit.chat.server.service;
 
 import cwchoiit.chat.server.constants.ChannelResponse;
+import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.entity.Channel;
 import cwchoiit.chat.server.entity.UserChannel;
 import cwchoiit.chat.server.repository.ChannelRepository;
@@ -19,6 +20,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static cwchoiit.chat.server.constants.ChannelResponse.*;
+import static cwchoiit.chat.server.constants.UserConnectionStatus.*;
 
 @Slf4j
 @Service
@@ -27,6 +29,7 @@ import static cwchoiit.chat.server.constants.ChannelResponse.*;
 public class ChannelService {
 
     private final UserChannelRepository userChannelRepository;
+    private final UserConnectionService userConnectionService;
     private final ChannelRepository channelRepository;
     private final StringRedisTemplate redisTemplate;
 
@@ -39,6 +42,11 @@ public class ChannelService {
         if (title == null || title.isBlank()) {
             log.warn("[create] Channel title is blank");
             return Pair.of(Optional.empty(), INVALID_ARGS);
+        }
+
+        if (userConnectionService.findStatus(creatorId, participantId) != ACCEPTED) {
+            log.warn("[create] Create direct channel failed. Creator and participant are not connected.");
+            return Pair.of(Optional.empty(), NOT_ALLOWED);
         }
 
         Channel channel = channelRepository.save(Channel.createDirectChannel(title));

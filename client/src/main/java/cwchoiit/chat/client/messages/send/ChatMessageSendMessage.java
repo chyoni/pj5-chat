@@ -9,7 +9,7 @@ import static cwchoiit.chat.client.constants.MessageType.MESSAGE;
 @Getter
 @ToString
 public class ChatMessageSendMessage extends BaseSendMessage {
-    private final String username;
+    private final Long channelId;
     private final String content;
 
     /**
@@ -25,9 +25,9 @@ public class ChatMessageSendMessage extends BaseSendMessage {
      * @param username the sender's username.
      * @param content  the message content to be sent.
      */
-    public ChatMessageSendMessage(String username, String content) {
+    public ChatMessageSendMessage(Long channelId, String content) {
         super(MESSAGE);
-        this.username = username;
+        this.channelId = channelId;
         this.content = content;
     }
 }

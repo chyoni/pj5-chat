@@ -92,7 +92,7 @@ class AppWebSocketHandlerTest {
     void handleTextMessage() {
         WebSocketSession mockSession = mock(WebSocketSession.class);
 
-        String message = Serializer.serialize(new MessageRequest(1L, "username", "message")).orElseThrow();
+        String message = Serializer.serialize(new MessageRequest(1L, "message")).orElseThrow();
         TextMessage textMessage = new TextMessage(message);
 
         appWebSocketHandler.handleTextMessage(mockSession, textMessage);

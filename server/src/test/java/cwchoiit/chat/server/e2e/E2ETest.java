@@ -6,11 +6,17 @@ import cwchoiit.chat.common.serializer.Serializer;
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.auth.RestApiLoginAuthFilter;
 import cwchoiit.chat.server.constants.ChannelResponse;
+import cwchoiit.chat.server.constants.UserConnectionStatus;
+import cwchoiit.chat.server.entity.UserConnection;
+import cwchoiit.chat.server.repository.UserConnectionRepository;
 import cwchoiit.chat.server.service.ChannelService;
 import cwchoiit.chat.server.service.MessageService;
+import cwchoiit.chat.server.service.UserConnectionService;
 import cwchoiit.chat.server.service.UserService;
 import cwchoiit.chat.server.service.request.UserRegisterRequest;
 import cwchoiit.chat.server.service.response.ChannelCreateResponse;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -47,8 +53,8 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Transactional
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class E2ETest extends SpringBootTestConfiguration {
 
     @LocalServerPort
@@ -62,6 +68,12 @@ class E2ETest extends SpringBootTestConfiguration {
     ChannelService channelService;
     @Autowired
     MessageService messageService;
+    @Autowired
+    UserConnectionService userConnectionService;
+    @Autowired
+    UserConnectionRepository userConnectionRepository;
+    @PersistenceContext
+    EntityManager entityManager;
 
     Client createClient(String sessionId) throws ExecutionException, InterruptedException, URISyntaxException {
         String url = String.format("ws://localhost:%d/ws/v1/message", port);
@@ -140,6 +152,17 @@ class E2ETest extends SpringBootTestConfiguration {
         // 로그인 한 유저로 클라이언트 만들기
         Client userA = createClient(sessionIdA);
         Client userB = createClient(sessionIdB);
+
+        // 유저 간 연결 상태 만들기
+        String userBInviteCode = userService.findInviteCodeByUserId(userBId).orElseThrow();
+        userConnectionService.invite(userAId, userBInviteCode);
+
+        // 서비스를 통해 유저 간 연결상태를 만들면, 내부 로직에서 레코드 락으로 락을 점유하고 있기 때문에 이 전체 테스트에서 여전히 그 락이 유효해짐. 그래서 하단에 회원 탈퇴가 불가능함.
+        // 따라서, 데이터베이스에 직접 연결 상태를 저장하고 flush
+        UserConnection userConnection = userConnectionRepository.findUserConnectionBy(userAId, userBId).orElseThrow();
+        userConnection.changeStatus(UserConnectionStatus.ACCEPTED);
+        entityManager.flush();
+        entityManager.clear();
 
         // 유저끼리 채팅 만들기
         Pair<Optional<ChannelCreateResponse>, ChannelResponse> testChannel =

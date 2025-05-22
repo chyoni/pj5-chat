@@ -43,7 +43,7 @@ class KeepAliveRequestHandlerTest {
     @Test
     @DisplayName("KeepRequestHandler는 BaseRequest 인스턴스 타입이 KeepAliveRequest일 때 처리할 수 있다.")
     void handle() {
-        keepAliveRequestHandler.handle(new MessageRequest(1L, "test", "test"), mock(WebSocketSession.class));
+        keepAliveRequestHandler.handle(new MessageRequest(1L, "test"), mock(WebSocketSession.class));
         keepAliveRequestHandler.handle(new InviteRequest(""), mock(WebSocketSession.class));
         keepAliveRequestHandler.handle(new AcceptRequest("inviter"), mock(WebSocketSession.class));
 
@@ -57,12 +57,13 @@ class KeepAliveRequestHandlerTest {
 
         Map<String, Object> attributes = new HashMap<>();
         attributes.put(IdKey.HTTP_SESSION_ID.getValue(), "123");
+        attributes.put(IdKey.USER_ID.getValue(), 1L);
 
         when(mocked.getAttributes()).thenReturn(attributes);
         keepAliveRequestHandler.handle(new KeepAliveRequest(), mocked);
 
-        verify(sessionService, times(1)).refreshTimeToLive(any());
-        verify(channelService, times(1)).refreshActiveChannel(anyLong());
-        verify(mocked, times(1)).getAttributes();
+        verify(sessionService, times(1)).refreshTimeToLive(eq("123"));
+        verify(channelService, times(1)).refreshActiveChannel(eq(1L));
+        verify(mocked, times(2)).getAttributes();
     }
 }
