@@ -172,6 +172,21 @@ public class UserConnectionService {
                 .orElse(NONE);
     }
 
+    public long countConnectionByStatus(Long callerUserId, List<Long> partnerUserIds, UserConnectionStatus status) {
+        long leftSide = userConnectionRepository.countByPartnerAUserIdAndPartnerBUserIdInAndStatus(
+                callerUserId,
+                partnerUserIds,
+                status.name()
+        );
+        long rightSide = userConnectionRepository.countByPartnerBUserIdAndPartnerAUserIdInAndStatus(
+                callerUserId,
+                partnerUserIds,
+                status.name()
+        );
+
+        return leftSide + rightSide;
+    }
+
     private void accept(Long inviterId, Long acceptorId) {
         // 여기서 min, max는 같은 엔티티임을 보장하는 것이랑 상관 없이 select ... for update로 레코드를 가져왔을 때,
         // 동시에 여러 스레드가 이 메서드를 호출할 수 있는데 그때, 데드락을 피하기 위함. 왜냐하면, A Thread가 1,2를 요청하고 B Thread가 2,1을 동시에 요청하면

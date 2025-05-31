@@ -10,16 +10,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MessageService {
 
+    private static final int THREAD_POOL_SIZE = 10;
+
     private final MessageRepository messageRepository;
     private final ChannelService channelService;
     private final UserService userService;
     private final WebSocketSessionManager sessionManager;
+
+    private final ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
     @Transactional
     public void sendMessage(Long channelId, Long senderId, String content) {
@@ -27,18 +35,17 @@ public class MessageService {
 
         String senderUsername = userService.findUsernameByUserId(senderId).orElseThrow();
 
-        channelService.findParticipantIds(channelId).stream()
-                .filter(participant -> !senderId.equals(participant.userId()))
-                .forEach(participant -> {
-                    if (channelService.isOnline(participant.userId(), channelId)) {
-                        WebSocketSession participantSession = sessionManager.findSessionByUserId(participant.userId());
-                        if (participantSession != null) {
-                            sessionManager.sendMessage(
-                                    participantSession,
-                                    new MessageResponse(channelId, senderUsername, content)
-                            );
-                        }
-                    }
-                });
+        channelService.findOnlineParticipantIds(channelId).stream()
+                .filter(participant -> !senderId.equals(participant))
+                .forEach(participant -> CompletableFuture.runAsync(() -> {
+                            WebSocketSession participantSession = sessionManager.findSessionByUserId(participant);
+                            if (participantSession != null) {
+                                sessionManager.sendMessage(
+                                        participantSession,
+                                        new MessageResponse(channelId, senderUsername, content)
+                                );
+                            }
+                        }, pool)
+                );
     }
 }

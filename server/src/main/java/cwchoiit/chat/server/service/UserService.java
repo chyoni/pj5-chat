@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -43,6 +44,12 @@ public class UserService {
     public Optional<String> findUsernameByUserId(Long userId) {
         return userRepository.findByUserId(userId)
                 .map(User::getUsername);
+    }
+
+    public List<Long> findUserIdsByUsernames(List<String> usernames) {
+        return userRepository.findAllByUsernameIn(usernames).stream()
+                .map(User::getUserId)
+                .toList();
     }
 
     public Optional<Long> findUserIdByUsername(String username) {

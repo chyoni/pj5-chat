@@ -16,6 +16,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -55,7 +56,7 @@ class EnterChannelRequestHandlerTest {
         enterChannelRequestHandler.handle(new FetchUserInviteCodeRequest(), mock(WebSocketSession.class));
         enterChannelRequestHandler.handle(new RejectRequest("inviter"), mock(WebSocketSession.class));
         enterChannelRequestHandler.handle(new AcceptRequest("inviter"), mock(WebSocketSession.class));
-        enterChannelRequestHandler.handle(new CreateChannelRequest("title", "participant"), mock(WebSocketSession.class));
+        enterChannelRequestHandler.handle(new CreateChannelRequest("title", List.of("participant")), mock(WebSocketSession.class));
         enterChannelRequestHandler.handle(new DisconnectRequest("inviter"), mock(WebSocketSession.class));
 
         verify(channelService, never()).enter(anyLong(), anyLong());

@@ -28,7 +28,8 @@ import lombok.RequiredArgsConstructor;
         @JsonSubTypes.Type(value = FetchConnectionsRequest.class, name = MessageType.FETCH_CONNECTIONS_REQUEST), // 위에서 명시한 "type"의 값이 "FETCH_CONNECTIONS_REQUEST"라면 FetchConnectionsRequest 역직렬화
         @JsonSubTypes.Type(value = DisconnectRequest.class, name = MessageType.DISCONNECT_REQUEST), // 위에서 명시한 "type"의 값이 "DISCONNECT_REQUEST"라면 DisconnectRequest 역직렬화
         @JsonSubTypes.Type(value = CreateChannelRequest.class, name = MessageType.CHANNEL_CREATE_REQUEST), // 위에서 명시한 "type"의 값이 "CHANNEL_CREATE_REQUEST"라면 CreateChannelRequest 역직렬화
-        @JsonSubTypes.Type(value = EnterChannelRequest.class, name = MessageType.ENTER_CHANNEL_REQUEST) // 위에서 명시한 "type"의 값이 "ENTER_CHANNEL_REQUEST"라면 EnterChannelRequest 역직렬화
+        @JsonSubTypes.Type(value = EnterChannelRequest.class, name = MessageType.ENTER_CHANNEL_REQUEST), // 위에서 명시한 "type"의 값이 "ENTER_CHANNEL_REQUEST"라면 EnterChannelRequest 역직렬화
+        @JsonSubTypes.Type(value = FetchChannelInviteCodeRequest.class, name = MessageType.FETCH_CHANNEL_INVITE_CODE_REQUEST) // 위에서 명시한 "type"의 값이 "FETCH_CHANNEL_INVITE_CODE_REQUEST"라면 FetchChannelInviteCodeRequest 역직렬화
 })
 @RequiredArgsConstructor
 public abstract class BaseRequest {
