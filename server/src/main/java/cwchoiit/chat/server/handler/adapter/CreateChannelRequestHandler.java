@@ -17,7 +17,11 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static cwchoiit.chat.server.constants.ChannelResponse.FAILED;
 import static cwchoiit.chat.server.constants.ChannelResponse.NOT_FOUND;
@@ -28,9 +32,13 @@ import static cwchoiit.chat.server.constants.MessageType.CHANNEL_CREATE_REQUEST;
 @RequiredArgsConstructor
 public class CreateChannelRequestHandler implements RequestHandler {
 
+    private static final int THREAD_POOL_SIZE = 10;
+
     private final ChannelService channelService;
     private final UserService userService;
     private final WebSocketSessionManager sessionManager;
+
+    private final ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
     @Override
     public String messageType() {
@@ -42,13 +50,11 @@ public class CreateChannelRequestHandler implements RequestHandler {
         if (request instanceof CreateChannelRequest createChannelRequest) {
             Long creatorId = (Long) session.getAttributes().get(IdKey.USER_ID.getValue());
 
-            // 다이렉트 메시지 대상자 찾기
-            Optional<Long> optionalParticipantId = userService.findUserIdByUsername(
-                    createChannelRequest.getParticipantUsername()
-            );
+            // 채널 메시지 대상자들 찾기
+            List<Long> participantIds = userService.findUserIdsByUsernames(createChannelRequest.getParticipantUsernames());
 
-            // 다이렉트 메시지 대상자가 없는 경우 처리
-            if (optionalParticipantId.isEmpty()) {
+            // 채널 메시지 대상자가 없는 경우 처리
+            if (participantIds.isEmpty()) {
                 sessionManager.sendMessage(
                         session,
                         new ErrorResponse(CHANNEL_CREATE_REQUEST, NOT_FOUND.getMessage())
@@ -58,9 +64,9 @@ public class CreateChannelRequestHandler implements RequestHandler {
 
             try {
                 // 다이렉트 채널 생성
-                Pair<Optional<ChannelCreateResponse>, ChannelResponse> result = channelService.createDirectChannel(
+                Pair<Optional<ChannelCreateResponse>, ChannelResponse> result = channelService.createGroupChannel(
                         creatorId,
-                        optionalParticipantId.get(),
+                        participantIds,
                         createChannelRequest.getTitle()
                 );
 
@@ -70,10 +76,18 @@ public class CreateChannelRequestHandler implements RequestHandler {
                                     session,
                                     new CreateChannelResponse(channel.channelId(), channel.title())
                             );
+
                             // 다이렉트 채널 대상자에게 노티
-                            sessionManager.sendMessage(
-                                    sessionManager.findSessionByUserId(optionalParticipantId.get()),
-                                    new ChannelJoinNotificationResponse(channel.channelId(), channel.title())
+                            participantIds.forEach(participantId ->
+                                    CompletableFuture.runAsync(() -> {
+                                        WebSocketSession participantSession = sessionManager.findSessionByUserId(participantId);
+                                        if (participantSession != null) {
+                                            sessionManager.sendMessage(
+                                                    participantSession,
+                                                    new ChannelJoinNotificationResponse(channel.channelId(), channel.title())
+                                            );
+                                        }
+                                    }, pool)
                             );
                         },
                         // 다이렉트 채널 생성 실패 시 노티

@@ -35,6 +35,30 @@ public interface UserConnectionRepository extends JpaRepository<UserConnection, 
 
     @Query(
             nativeQuery = true,
+            value = "select count(*) " +
+                    "from user_connection uc " +
+                    "where uc.partner_a_user_id = :partnerAUserId " +
+                    "and uc.partner_b_user_id in (:partnerBUserIds) " +
+                    "and uc.status = :status"
+    )
+    long countByPartnerAUserIdAndPartnerBUserIdInAndStatus(@Param("partnerAUserId") Long partnerAUserId,
+                                                           @Param("partnerBUserIds") List<Long> partnerBUserIds,
+                                                           @Param("status") String status);
+
+    @Query(
+            nativeQuery = true,
+            value = "select count(*) " +
+                    "from user_connection uc " +
+                    "where uc.partner_a_user_id = :partnerBUserId " +
+                    "and uc.partner_b_user_id in (:partnerAUserIds) " +
+                    "and uc.status = :status"
+    )
+    long countByPartnerBUserIdAndPartnerAUserIdInAndStatus(@Param("partnerBUserId") Long partnerBUserId,
+                                                           @Param("partnerAUserIds") List<Long> partnerAUserIds,
+                                                           @Param("status") String status);
+
+    @Query(
+            nativeQuery = true,
             value = "select uc.partner_b_user_id as userId, u.username as username, uc.inviter_user_id as inviterUserId " +
                     "from user_connection uc " +
                     "join user u on uc.partner_b_user_id = u.user_id " +

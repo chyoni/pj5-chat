@@ -23,6 +23,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -107,7 +108,7 @@ class CreateChannelRequestHandlerTest {
                 .thenReturn(Pair.of(Optional.of(channelCreateResponse), SUCCESS));
 
 
-        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, participantUsername), mockSession);
+        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, List.of(participantUsername)), mockSession);
 
         ArgumentCaptor<CreateChannelResponse> captor = ArgumentCaptor.forClass(CreateChannelResponse.class);
         verify(sessionManager, times(1)).sendMessage(eq(mockSession), captor.capture());
@@ -144,7 +145,7 @@ class CreateChannelRequestHandlerTest {
                 .thenReturn(Pair.of(Optional.empty(), FAILED));
 
 
-        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, participantUsername), mockSession);
+        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, List.of(participantUsername)), mockSession);
 
         verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
         verify(sessionManager, never()).sendMessage(any(), any(ChannelJoinNotificationResponse.class));
@@ -167,7 +168,7 @@ class CreateChannelRequestHandlerTest {
         when(userService.findUserIdByUsername(eq(participantUsername)))
                 .thenReturn(Optional.empty());
 
-        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, participantUsername), mockSession);
+        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, List.of(participantUsername)), mockSession);
 
         verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
         verify(channelService, never()).createDirectChannel(anyLong(), anyLong(), anyString());
@@ -194,7 +195,7 @@ class CreateChannelRequestHandlerTest {
                 .when(channelService)
                 .createDirectChannel(eq(requestUserId), eq(participantId), eq(channelTitle));
 
-        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, participantUsername), mockSession);
+        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, List.of(participantUsername)), mockSession);
 
         assertThat(logCaptor.getErrorLogs()).hasSize(1);
         assertThat(logCaptor.getErrorLogs())

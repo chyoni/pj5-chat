@@ -127,7 +127,7 @@ class BaseRequestTest {
     @DisplayName("BaseRequest 클래스가 CHANNEL_CREATE_REQUEST 타입으로 메시지가 들어오는 경우 역직렬화 정상 처리")
     void deserialize9() {
         BaseRequest baseRequest = Serializer.deserialize(
-                "{\"type\":\"CHANNEL_CREATE_REQUEST\", \"title\": \"title\", \"participantUsername\": \"participantUsername\"}",
+                "{\"type\":\"CHANNEL_CREATE_REQUEST\", \"title\": \"title\", \"participantUsernames\": [\"p1\", \"p2\"]}",
                 BaseRequest.class
         ).orElseThrow();
 
@@ -136,7 +136,8 @@ class BaseRequestTest {
 
         CreateChannelRequest createChannelRequest = (CreateChannelRequest) baseRequest;
         assertThat(createChannelRequest.getTitle()).isEqualTo("title");
-        assertThat(createChannelRequest.getParticipantUsername()).isEqualTo("participantUsername");
+        assertThat(createChannelRequest.getParticipantUsernames())
+                .containsExactlyInAnyOrder("p1", "p2");
     }
 
     @Test
