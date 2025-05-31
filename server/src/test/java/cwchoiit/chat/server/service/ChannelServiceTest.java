@@ -3,6 +3,8 @@ package cwchoiit.chat.server.service;
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.constants.ChannelResponse;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
+import cwchoiit.chat.server.entity.UserChannel;
+import cwchoiit.chat.server.repository.ChannelRepository;
 import cwchoiit.chat.server.repository.UserChannelRepository;
 import cwchoiit.chat.server.service.response.ChannelCreateResponse;
 import cwchoiit.chat.server.service.response.ChannelParticipantResponse;
@@ -18,12 +20,12 @@ import org.springframework.data.util.Pair;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import static cwchoiit.chat.server.constants.ChannelResponse.INVALID_ARGS;
-import static cwchoiit.chat.server.constants.ChannelResponse.NOT_ALLOWED;
+import static cwchoiit.chat.server.constants.ChannelResponse.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,6 +42,8 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
     StringRedisTemplate redisTemplate;
     @MockitoSpyBean
     UserChannelRepository userChannelRepository;
+    @MockitoSpyBean
+    ChannelRepository channelRepository;
     @Autowired
     ChannelService channelService;
 
@@ -108,6 +112,73 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
         assertThat(result.getSecond()).isEqualTo(ChannelResponse.SUCCESS);
 
         verify(userChannelRepository, times(1)).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("그룹 채널 생성 시, 타이틀이 없는 경우 채널 생성에 실패한다.")
+    void createGroupChannel() {
+        Pair<Optional<ChannelCreateResponse>, ChannelResponse> response = channelService.createGroupChannel(1L, List.of(2L, 3L), null);
+
+        assertThat(logCaptor.getWarnLogs()).anyMatch(log -> log.contains("Channel title is blank"));
+        assertThat(response.getFirst()).isEmpty();
+        assertThat(response.getSecond()).isEqualTo(INVALID_ARGS);
+
+        Pair<Optional<ChannelCreateResponse>, ChannelResponse> response2 = channelService.createGroupChannel(1L, List.of(2L, 3L), "");
+
+        assertThat(logCaptor.getWarnLogs()).anyMatch(log -> log.contains("Channel title is blank"));
+        assertThat(response2.getFirst()).isEmpty();
+        assertThat(response2.getSecond()).isEqualTo(INVALID_ARGS);
+    }
+
+    @Test
+    @DisplayName("그룹 채널 생성 시, 최대 인원을 초과하면 채널 생성에 실패한다.")
+    void createGroupChannel_failed() {
+        List<Long> participantIds = new ArrayList<>();
+        for (int i = 0; i < 101; i++) {
+            participantIds.add((long) i);
+        }
+        Pair<Optional<ChannelCreateResponse>, ChannelResponse> response =
+                channelService.createGroupChannel(1L, participantIds, "Channel");
+
+        assertThat(logCaptor.getWarnLogs()).anyMatch(log -> log.contains("Channel head count is over limit"));
+        assertThat(response.getFirst()).isEmpty();
+        assertThat(response.getSecond()).isEqualTo(OVER_LIMIT);
+    }
+
+    @Test
+    @DisplayName("그룹 채널 생성 시, 채널 생성자와 참여자 간 ACCEPTED 상태가 맺어진 총 인원수와 파라미터로 받은 참여자 수가 다른 경우, 채널 생성에 실패한다.")
+    void createGroupChannel_failed2() {
+        long creatorId = 1L;
+        List<Long> participants = List.of(2L, 3L);
+        when(userConnectionService.countConnectionByStatus(creatorId, participants, UserConnectionStatus.ACCEPTED))
+                .thenReturn(1L);
+
+        Pair<Optional<ChannelCreateResponse>, ChannelResponse> response =
+                channelService.createGroupChannel(creatorId, participants, "Channel");
+
+        assertThat(logCaptor.getWarnLogs()).anyMatch(log -> log.contains("[createGroupChannel] Create group channel failed. Creator and participants are not connected."));
+        assertThat(response.getFirst()).isEmpty();
+        assertThat(response.getSecond()).isEqualTo(NOT_ALLOWED);
+    }
+
+    @Test
+    @DisplayName("그룹 채널 생성에 성공한다.")
+    void createGroupChannel_success() {
+        long creatorId = 1L;
+        List<Long> participants = List.of(2L, 3L);
+        when(userConnectionService.countConnectionByStatus(creatorId, participants, UserConnectionStatus.ACCEPTED))
+                .thenReturn(2L);
+
+        Pair<Optional<ChannelCreateResponse>, ChannelResponse> response =
+                channelService.createGroupChannel(creatorId, participants, "Channel");
+
+        verify(channelRepository, times(1)).save(any());
+        verify(userChannelRepository, times(1)).saveAll(any());
+
+        assertThat(response.getFirst()).isNotEmpty();
+        assertThat(response.getFirst().get().title()).isEqualTo("Channel");
+        assertThat(response.getFirst().get().headCount()).isEqualTo(3);
+        assertThat(response.getSecond()).isEqualTo(ChannelResponse.SUCCESS);
     }
 
     @Test
@@ -201,5 +272,23 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
         assertThat(participantIds)
                 .extracting(ChannelParticipantResponse::userId)
                 .containsExactlyInAnyOrder(1L, 2L);
+    }
+
+    @Test
+    @DisplayName("채널 참여자 중, 온라인 유저들을 찾을 때, 채널 ID가 null인 경우 빈 리스트를 반환한다.")
+    void findOnlineParticipantIds() {
+        long channelId = 100L;
+
+        List<Long> onlineParticipantIds = channelService.findOnlineParticipantIds(channelId);
+
+        assertThat(onlineParticipantIds).isEmpty();
+    }
+
+    @Test
+    @DisplayName("채널 참여 코드를 찾을 수 있다.")
+    void findInviteCode() {
+        channelService.findInviteCode(100L);
+
+        verify(channelRepository, times(1)).findByChannelId(eq(100L));
     }
 }

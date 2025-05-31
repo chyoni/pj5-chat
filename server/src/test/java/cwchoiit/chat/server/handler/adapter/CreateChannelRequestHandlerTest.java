@@ -22,16 +22,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.util.Pair;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
-import static cwchoiit.chat.server.constants.ChannelResponse.FAILED;
+import static cwchoiit.chat.server.constants.ChannelResponse.INVALID_ARGS;
 import static cwchoiit.chat.server.constants.ChannelResponse.SUCCESS;
 import static cwchoiit.chat.server.constants.MessageType.CHANNEL_CREATE_REQUEST;
 import static cwchoiit.chat.server.constants.UserConnectionStatus.PENDING;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.anyString;
@@ -93,35 +92,71 @@ class CreateChannelRequestHandlerTest {
 
         long requestUserId = 1L;
         long channelId = 1L;
-        long participantId = 2L;
-        String participantUsername = "participant";
         String channelTitle = "channelTitle";
+        List<String> participants = List.of("participants1", "participants2");
+
         ChannelCreateResponse channelCreateResponse = new ChannelCreateResponse(channelId, channelTitle, 2);
 
         attributes.put(IdKey.USER_ID.getValue(), requestUserId);
         when(mockSession.getAttributes()).thenReturn(attributes);
 
-        when(userService.findUserIdByUsername(eq(participantUsername)))
-                .thenReturn(Optional.of(participantId));
+        when(userService.findUserIdsByUsernames(eq(participants)))
+                .thenReturn(List.of(2L, 3L));
 
-        when(channelService.createDirectChannel(eq(requestUserId), eq(participantId), eq(channelTitle)))
+        when(channelService.createGroupChannel(eq(requestUserId), eq(List.of(2L, 3L)), eq(channelTitle)))
                 .thenReturn(Pair.of(Optional.of(channelCreateResponse), SUCCESS));
 
+        WebSocketSession user2Session = mock(WebSocketSession.class);
+        WebSocketSession user3Session = mock(WebSocketSession.class);
+        when(sessionManager.findSessionByUserId(eq(2L))).thenReturn(user2Session);
+        when(sessionManager.findSessionByUserId(eq(3L))).thenReturn(user3Session);
 
-        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, List.of(participantUsername)), mockSession);
+        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, participants), mockSession);
 
         ArgumentCaptor<CreateChannelResponse> captor = ArgumentCaptor.forClass(CreateChannelResponse.class);
         verify(sessionManager, times(1)).sendMessage(eq(mockSession), captor.capture());
         assertThat(captor.getValue().getChannelId()).isEqualTo(channelId);
         assertThat(captor.getValue().getTitle()).isEqualTo(channelTitle);
 
-        ArgumentCaptor<ChannelJoinNotificationResponse> channelJoinCaptor = ArgumentCaptor.forClass(ChannelJoinNotificationResponse.class);
-        verify(sessionManager, times(1)).sendMessage(any(), channelJoinCaptor.capture());
-        verify(sessionManager, times(1)).findSessionByUserId(eq(participantId));
-        assertThat(channelJoinCaptor.getValue().getChannelId()).isEqualTo(channelId);
-        assertThat(channelJoinCaptor.getValue().getTitle()).isEqualTo(channelTitle);
+        verify(sessionManager, times(1)).findSessionByUserId(eq(2L));
+        verify(sessionManager, times(1)).findSessionByUserId(eq(3L));
+
+        verify(sessionManager, times(1)).sendMessage(eq(user2Session), any(ChannelJoinNotificationResponse.class));
+        verify(sessionManager, times(1)).sendMessage(eq(user3Session), any(ChannelJoinNotificationResponse.class));
 
         verify(sessionManager, never()).sendMessage(eq(mockSession), any(ErrorResponse.class));
+    }
+
+    @Test
+    @DisplayName("채널 생성에 성공했지만, 채널 참여자의 세션이 null인 경우, 채널 참여자에게 메시지를 보내지 않는다.")
+    void handle_success_null_session() {
+        WebSocketSession mockSession = mock(WebSocketSession.class);
+        Map<String, Object> attributes = new HashMap<>();
+
+        long requestUserId = 1L;
+        long channelId = 1L;
+        String channelTitle = "channelTitle";
+        List<String> participants = List.of("participants1", "participants2");
+
+        ChannelCreateResponse channelCreateResponse = new ChannelCreateResponse(channelId, channelTitle, 2);
+
+        attributes.put(IdKey.USER_ID.getValue(), requestUserId);
+        when(mockSession.getAttributes()).thenReturn(attributes);
+
+        when(userService.findUserIdsByUsernames(eq(participants)))
+                .thenReturn(List.of(2L, 3L));
+
+        when(channelService.createGroupChannel(eq(requestUserId), eq(List.of(2L, 3L)), eq(channelTitle)))
+                .thenReturn(Pair.of(Optional.of(channelCreateResponse), SUCCESS));
+
+        when(sessionManager.findSessionByUserId(eq(2L))).thenReturn(null);
+        when(sessionManager.findSessionByUserId(eq(3L))).thenReturn(null);
+
+        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, participants), mockSession);
+
+        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(CreateChannelResponse.class));
+        await().atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() -> verify(sessionManager, never()).sendMessage(any(), any(ChannelJoinNotificationResponse.class)));
     }
 
     @Test
@@ -131,21 +166,19 @@ class CreateChannelRequestHandlerTest {
         Map<String, Object> attributes = new HashMap<>();
 
         long requestUserId = 1L;
-        long participantId = 2L;
-        String participantUsername = "participant";
+        List<String> participants = List.of("participants1", "participants2");
         String channelTitle = "channelTitle";
 
         attributes.put(IdKey.USER_ID.getValue(), requestUserId);
         when(mockSession.getAttributes()).thenReturn(attributes);
 
-        when(userService.findUserIdByUsername(eq(participantUsername)))
-                .thenReturn(Optional.of(participantId));
+        when(userService.findUserIdsByUsernames(eq(participants)))
+                .thenReturn(List.of(2L, 3L));
 
-        when(channelService.createDirectChannel(eq(requestUserId), eq(participantId), eq(channelTitle)))
-                .thenReturn(Pair.of(Optional.empty(), FAILED));
+        when(channelService.createGroupChannel(eq(requestUserId), eq(List.of(2L, 3L)), eq(channelTitle)))
+                .thenReturn(Pair.of(Optional.empty(), INVALID_ARGS));
 
-
-        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, List.of(participantUsername)), mockSession);
+        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, participants), mockSession);
 
         verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
         verify(sessionManager, never()).sendMessage(any(), any(ChannelJoinNotificationResponse.class));
@@ -159,19 +192,19 @@ class CreateChannelRequestHandlerTest {
         Map<String, Object> attributes = new HashMap<>();
 
         long requestUserId = 1L;
-        String participantUsername = "participant";
         String channelTitle = "channelTitle";
+        List<String> participants = List.of("participants1", "participants2");
 
         attributes.put(IdKey.USER_ID.getValue(), requestUserId);
         when(mockSession.getAttributes()).thenReturn(attributes);
 
-        when(userService.findUserIdByUsername(eq(participantUsername)))
-                .thenReturn(Optional.empty());
+        when(userService.findUserIdsByUsernames(eq(participants)))
+                .thenReturn(Collections.emptyList());
 
-        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, List.of(participantUsername)), mockSession);
+        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, participants), mockSession);
 
         verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
-        verify(channelService, never()).createDirectChannel(anyLong(), anyLong(), anyString());
+        verify(channelService, never()).createGroupChannel(anyLong(), anyList(), anyString());
     }
 
     @Test
@@ -181,21 +214,20 @@ class CreateChannelRequestHandlerTest {
         Map<String, Object> attributes = new HashMap<>();
 
         long requestUserId = 1L;
-        long participantId = 2L;
-        String participantUsername = "participant";
+        List<String> participants = List.of("participants1", "participants2");
         String channelTitle = "channelTitle";
 
         attributes.put(IdKey.USER_ID.getValue(), requestUserId);
         when(mockSession.getAttributes()).thenReturn(attributes);
 
-        when(userService.findUserIdByUsername(eq(participantUsername)))
-                .thenReturn(Optional.of(participantId));
+        when(userService.findUserIdsByUsernames(eq(participants)))
+                .thenReturn(List.of(2L, 3L));
 
         doThrow(new RuntimeException("test exception"))
                 .when(channelService)
-                .createDirectChannel(eq(requestUserId), eq(participantId), eq(channelTitle));
+                .createGroupChannel(eq(requestUserId), eq(List.of(2L, 3L)), eq(channelTitle));
 
-        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, List.of(participantUsername)), mockSession);
+        createChannelRequestHandler.handle(new CreateChannelRequest(channelTitle, participants), mockSession);
 
         assertThat(logCaptor.getErrorLogs()).hasSize(1);
         assertThat(logCaptor.getErrorLogs())

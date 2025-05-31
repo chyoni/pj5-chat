@@ -17,8 +17,10 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.*;
 
 @Transactional
@@ -67,61 +69,64 @@ class MessageServiceTest extends SpringBootTestConfiguration {
     @Test
     @DisplayName("sendMessage() 흐름 테스트 - Sender와 Partner가 동일하지 않으면, Partner 에게 메시지를 전송하지만, Partner 세션이 끊어진 경우 전송하지 못한다.")
     void sendMessage3() {
-        when(userService.findUsernameByUserId(eq(1L)))
+        Long senderId = 1L;
+        Long partnerId = 2L;
+        long channelId = 1L;
+
+        when(userService.findUsernameByUserId(eq(senderId)))
                 .thenReturn(Optional.of("sender"));
 
-        when(sessionManager.findSessionByUserId(eq(2L))).thenReturn(null);
+        when(sessionManager.findSessionByUserId(eq(partnerId))).thenReturn(null);
 
-        ChannelParticipantResponse sender = new ChannelParticipantResponse(1L);
-        ChannelParticipantResponse partner = new ChannelParticipantResponse(2L);
-        when(channelService.findParticipantIds(eq(1L)))
-                .thenReturn(List.of(sender, partner));
+        when(channelService.findOnlineParticipantIds(eq(channelId)))
+                .thenReturn(List.of(senderId, partnerId));
 
-        when(channelService.isOnline(eq(2L), eq(1L))).thenReturn(true);
-
-        messageService.sendMessage(1L, 1L, "test");
+        messageService.sendMessage(channelId, senderId, "test");
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
 
         verify(messageRepository, times(1)).save(messageCaptor.capture());
 
         Message value = messageCaptor.getValue();
-        assertThat(value.getUserId()).isEqualTo(1L);
+        assertThat(value.getUserId()).isEqualTo(senderId);
         assertThat(value.getContent()).isEqualTo("test");
+        verify(channelService, times(1)).findOnlineParticipantIds(eq(channelId));
 
-        verify(channelService, times(1)).isOnline(eq(2L), eq(1L));
-        verify(sessionManager, times(1)).findSessionByUserId(eq(2L));
-        verify(sessionManager, times(0)).sendMessage(any(), any(MessageResponse.class));
+        // 비동기 코드를 테스트 하기 위해 1초동안 polling 하면서 테스트 수행
+        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
+            verify(sessionManager, times(1)).findSessionByUserId(eq(partnerId));
+            verify(sessionManager, times(0)).sendMessage(any(), any(MessageResponse.class));
+        });
     }
 
     @Test
     @DisplayName("sendMessage() 흐름 테스트 - Sender와 Partner가 동일하지 않으면, Partner 에게 메시지를 전달한다.")
     void sendMessage2() {
-        when(userService.findUsernameByUserId(eq(1L)))
+        Long senderId = 1L;
+        Long partnerId = 2L;
+        long channelId = 1L;
+
+        when(userService.findUsernameByUserId(eq(senderId)))
                 .thenReturn(Optional.of("sender"));
 
         WebSocketSession mockSession = mock(WebSocketSession.class);
-        when(sessionManager.findSessionByUserId(eq(2L))).thenReturn(mockSession);
 
-        ChannelParticipantResponse sender = new ChannelParticipantResponse(1L);
-        ChannelParticipantResponse partner = new ChannelParticipantResponse(2L);
-        when(channelService.findParticipantIds(eq(1L)))
-                .thenReturn(List.of(sender, partner));
+        when(channelService.findOnlineParticipantIds(eq(channelId)))
+                .thenReturn(List.of(senderId, partnerId));
 
-        when(channelService.isOnline(eq(2L), eq(1L))).thenReturn(true);
+        when(sessionManager.findSessionByUserId(eq(partnerId))).thenReturn(mockSession);
 
-        messageService.sendMessage(1L, 1L, "test");
+        messageService.sendMessage(channelId, senderId, "test");
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
 
         verify(messageRepository, times(1)).save(messageCaptor.capture());
 
         Message value = messageCaptor.getValue();
-        assertThat(value.getUserId()).isEqualTo(1L);
+        assertThat(value.getUserId()).isEqualTo(senderId);
         assertThat(value.getContent()).isEqualTo("test");
 
-        verify(channelService, times(1)).isOnline(eq(2L), eq(1L));
-        verify(sessionManager, times(1)).findSessionByUserId(eq(2L));
+        verify(sessionManager, times(1)).findSessionByUserId(eq(partnerId));
         verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(MessageResponse.class));
     }
 }
