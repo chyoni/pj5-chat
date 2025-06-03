@@ -14,6 +14,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -208,5 +210,18 @@ class UserServiceTest extends SpringBootTestConfiguration {
 
         assertThat(empty).isTrue();
         verify(userRepository, times(1)).findByConnectionInviteCode(eq("any"));
+    }
+
+    @Test
+    @DisplayName("여러 유저이름으로 유저 ID를 복수로 찾을 수 있다.")
+    void findUserIdByUsernameList() {
+        User save1 = userRepository.save(User.create("test1", "test1"));
+        User save2 = userRepository.save(User.create("test2", "test2"));
+        User save3 = userRepository.save(User.create("test3", "test3"));
+
+        List<Long> userIdsByUsernames = userService.findUserIdsByUsernames(List.of("test1", "test2", "test3"));
+
+        assertThat(userIdsByUsernames).isNotNull();
+        assertThat(userIdsByUsernames).containsExactlyInAnyOrder(save1.getUserId(), save2.getUserId(), save3.getUserId());
     }
 }
