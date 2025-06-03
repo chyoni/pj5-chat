@@ -29,7 +29,11 @@ import lombok.RequiredArgsConstructor;
         @JsonSubTypes.Type(value = DisconnectRequest.class, name = MessageType.DISCONNECT_REQUEST), // 위에서 명시한 "type"의 값이 "DISCONNECT_REQUEST"라면 DisconnectRequest 역직렬화
         @JsonSubTypes.Type(value = CreateChannelRequest.class, name = MessageType.CHANNEL_CREATE_REQUEST), // 위에서 명시한 "type"의 값이 "CHANNEL_CREATE_REQUEST"라면 CreateChannelRequest 역직렬화
         @JsonSubTypes.Type(value = EnterChannelRequest.class, name = MessageType.ENTER_CHANNEL_REQUEST), // 위에서 명시한 "type"의 값이 "ENTER_CHANNEL_REQUEST"라면 EnterChannelRequest 역직렬화
-        @JsonSubTypes.Type(value = FetchChannelInviteCodeRequest.class, name = MessageType.FETCH_CHANNEL_INVITE_CODE_REQUEST) // 위에서 명시한 "type"의 값이 "FETCH_CHANNEL_INVITE_CODE_REQUEST"라면 FetchChannelInviteCodeRequest 역직렬화
+        @JsonSubTypes.Type(value = FetchChannelInviteCodeRequest.class, name = MessageType.FETCH_CHANNEL_INVITE_CODE_REQUEST), // 위에서 명시한 "type"의 값이 "FETCH_CHANNEL_INVITE_CODE_REQUEST"라면 FetchChannelInviteCodeRequest 역직렬화
+        @JsonSubTypes.Type(value = FetchChannelsRequest.class, name = MessageType.FETCH_CHANNELS_REQUEST), // 위에서 명시한 "type"의 값이 "FETCH_CHANNELS_REQUEST"라면 FetchChannelsRequest 역직렬화
+        @JsonSubTypes.Type(value = JoinChannelRequest.class, name = MessageType.JOIN_CHANNEL_REQUEST), // 위에서 명시한 "type"의 값이 "JOIN_CHANNEL_REQUEST"라면 JoinChannelRequest 역직렬화
+        @JsonSubTypes.Type(value = LeaveChannelRequest.class, name = MessageType.LEAVE_CHANNEL_REQUEST), // 위에서 명시한 "type"의 값이 "LEAVE_CHANNEL_REQUEST"라면 LeaveChannelRequest 역직렬화
+        @JsonSubTypes.Type(value = QuitChannelRequest.class, name = MessageType.QUIT_CHANNEL_REQUEST) // 위에서 명시한 "type"의 값이 "QUIT_CHANNEL_REQUEST"라면 QuitChannelRequest 역직렬화
 })
 @RequiredArgsConstructor
 public abstract class BaseRequest {

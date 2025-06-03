@@ -3,25 +3,30 @@ package cwchoiit.chat.server.service;
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.constants.ChannelResponse;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
+import cwchoiit.chat.server.entity.Channel;
 import cwchoiit.chat.server.entity.UserChannel;
 import cwchoiit.chat.server.repository.ChannelRepository;
 import cwchoiit.chat.server.repository.UserChannelRepository;
 import cwchoiit.chat.server.service.response.ChannelCreateResponse;
 import cwchoiit.chat.server.service.response.ChannelParticipantResponse;
+import cwchoiit.chat.server.service.response.ChannelReadResponse;
 import nl.altindag.log.LogCaptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.util.Pair;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -275,13 +280,47 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
     }
 
     @Test
-    @DisplayName("채널 참여자 중, 온라인 유저들을 찾을 때, 채널 ID가 null인 경우 빈 리스트를 반환한다.")
+    @DisplayName("채널 참여자 중, 온라인 유저들을 찾을 때, 채널 IDs가 null인 경우 빈 리스트를 반환한다.")
     void findOnlineParticipantIds() {
         long channelId = 100L;
+
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.multiGet(anyCollection()))
+                .thenReturn(null);
 
         List<Long> onlineParticipantIds = channelService.findOnlineParticipantIds(channelId);
 
         assertThat(onlineParticipantIds).isEmpty();
+    }
+
+    @Test
+    @DisplayName("채널 참여자 중, 온라인 유저들을 찾을 때 모든 값이 정상값인 경우, 정상값을 반환한다.")
+    void findOnlineParticipantIds2() {
+        long channelId = 100L;
+
+        List<String> values = new ArrayList<>();
+        values.add(String.valueOf(channelId));
+        values.add(null);
+        values.add("200");
+
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.multiGet(anyCollection()))
+                .thenReturn(values);
+
+        when(userChannelRepository.findUserIdsByChannelId(channelId))
+                .thenReturn(List.of(
+                                UserChannel.create(1L, channelId),
+                                UserChannel.create(2L, channelId),
+                                UserChannel.create(3L, channelId)
+                        )
+                );
+
+        List<Long> onlineParticipantIds = channelService.findOnlineParticipantIds(channelId);
+
+        assertThat(onlineParticipantIds).isNotEmpty();
+        assertThat(onlineParticipantIds).containsExactlyInAnyOrder(1L);
     }
 
     @Test
@@ -290,5 +329,182 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
         channelService.findInviteCode(100L);
 
         verify(channelRepository, times(1)).findByChannelId(eq(100L));
+    }
+
+    @Test
+    @DisplayName("활성화된 채널 나가기 시, 관련 없는 유저 ID를 받으면 아무런 채널도 나가지 않는다.")
+    void removeActiveChannel() {
+        boolean result = channelService.leave(300L);
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    @DisplayName("활성화된 채널 나가기 시, 정상 유저 ID를 받으면 해당 유저의 채널을 나간다.")
+    void removeActiveChannel2() {
+
+        channelService.setActiveChannel(1L, 100L);
+
+        boolean result = channelService.leave(1L);
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    @DisplayName("유저 ID를 통해 해당 유저가 속한 채널들을 찾을 수 있다.")
+    void findChannelsByUserId() {
+        Channel ch1 = channelRepository.save(Channel.create("ch1", 2));
+        Channel ch2 = channelRepository.save(Channel.create("ch2", 2));
+        userChannelRepository.save(UserChannel.create(1L, ch1.getChannelId()));
+        userChannelRepository.save(UserChannel.create(1L, ch2.getChannelId()));
+
+        List<ChannelReadResponse> channels = channelService.findChannelsByUserId(1L);
+
+        assertThat(channels).isNotEmpty();
+        assertThat(channels).hasSize(2);
+        assertThat(channels.get(0).channelId()).isEqualTo(ch1.getChannelId());
+        assertThat(channels.get(1).channelId()).isEqualTo(ch2.getChannelId());
+    }
+
+    @Test
+    @DisplayName("채널 초대 코드를 통해 채널을 찾을 수 있다.")
+    void findChannelByInviteCode() {
+        Channel channel = channelRepository.save(Channel.create("ch", 2));
+
+        ChannelReadResponse channelReadResponse = channelService.findChannelByInviteCode(channel.getChannelInviteCode()).orElseThrow();
+
+        assertThat(channelReadResponse.channelId()).isEqualTo(channel.getChannelId());
+        assertThat(channelReadResponse.title()).isEqualTo(channel.getTitle());
+        assertThat(channelReadResponse.headCount()).isEqualTo(channel.getHeadCount());
+    }
+
+    @Test
+    @DisplayName("채널 삭제 시, 해당 채널에 삭제 요청을 한 유저가 포함되어 있지 않으면 삭제 되지 않는다.")
+    void quit() {
+        ChannelResponse response = channelService.quit(1L, 100L);
+        assertThat(logCaptor.getWarnLogs())
+                .anyMatch(log -> log.contains("User 100 is not joined to channel: 1"));
+
+        assertThat(response).isEqualTo(ChannelResponse.NOT_JOINED);
+    }
+
+    @Test
+    @DisplayName("채널 삭제 시, 채널 ID로 채널을 찾지 못한 경우 예외가 발생한다.")
+    void quit2() {
+        long userId = 1L;
+        long channelId = 100L;
+        when(userChannelRepository.existsByUserIdAndChannelId(eq(userId), eq(channelId)))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> channelService.quit(channelId, userId))
+                .isInstanceOf(NoSuchElementException.class);
+    }
+
+    @Test
+    @DisplayName("채널 삭제 시, 채널의 head count 가 0인 경우, 채널의 유저수를 제거하지 못한다.")
+    void quit3() {
+        long userId = 1L;
+        long channelId = 100L;
+        when(userChannelRepository.existsByUserIdAndChannelId(eq(userId), eq(channelId)))
+                .thenReturn(true);
+        when(channelRepository.findLockByChannelId(eq(channelId)))
+                .thenReturn(Optional.of(Channel.create("ch", 0)));
+
+        ChannelResponse response = channelService.quit(channelId, userId);
+
+        verify(userChannelRepository, times(1)).deleteByUserIdAndChannelId(eq(userId), eq(channelId));
+        assertThat(response).isEqualTo(SUCCESS);
+    }
+
+    @Test
+    @DisplayName("채널 삭제 시, 모든 상태가 정상인 경우, 채널의 유저수를 하나 줄이고 성공 응답을 반환한다.")
+    void quit4() {
+        Channel ch = Channel.create("ch", 2);
+        channelRepository.save(ch);
+
+        long userId = 1L;
+        userChannelRepository.save(UserChannel.create(userId, ch.getChannelId()));
+
+        ChannelResponse response = channelService.quit(ch.getChannelId(), userId);
+
+        verify(userChannelRepository, times(1)).deleteByUserIdAndChannelId(eq(userId), eq(ch.getChannelId()));
+        assertThat(ch.getHeadCount()).isEqualTo(1);
+        assertThat(response).isEqualTo(SUCCESS);
+    }
+
+    @Test
+    @DisplayName("채널 참여 시, 채널 초대 코드를 통해 채널을 찾지 못한 경우, 참여에 실패한다.")
+    void join() {
+        Pair<Optional<ChannelReadResponse>, ChannelResponse> response = channelService.join("1234", 1L);
+
+        assertThat(response.getFirst()).isEmpty();
+        assertThat(response.getSecond()).isEqualTo(ChannelResponse.NOT_FOUND);
+        assertThat(logCaptor.getWarnLogs())
+                .anyMatch(log -> log.contains("Channel not found with invite code: 1234"));
+    }
+
+    @Test
+    @DisplayName("채널 참여 시, 해당 유저가 이미 채널에 참여된 경우, 채널 참여에 실패한다.")
+    void join2() {
+        long userId = 1L;
+        Channel ch = channelRepository.save(Channel.create("ch", 2));
+        userChannelRepository.save(UserChannel.create(userId, ch.getChannelId()));
+
+        Pair<Optional<ChannelReadResponse>, ChannelResponse> response = channelService.join(ch.getChannelInviteCode(), userId);
+
+        assertThat(response.getFirst()).isEmpty();
+        assertThat(response.getSecond()).isEqualTo(ChannelResponse.ALREADY_JOINED);
+        assertThat(logCaptor.getWarnLogs())
+                .anyMatch(log -> log.contains("User is already joined to channel: %d".formatted(ch.getChannelId())));
+    }
+
+    @Test
+    @DisplayName("채널 참여 시, 채널의 최대 허용 인원이 초과한 경우, 채널 참여에 실패한다.")
+    void join3() {
+        long userId = 1L;
+        Channel ch = channelRepository.save(Channel.create("ch", 101));
+        userChannelRepository.save(UserChannel.create(userId, ch.getChannelId()));
+
+        Pair<Optional<ChannelReadResponse>, ChannelResponse> response = channelService.join(ch.getChannelInviteCode(), 2L);
+
+        assertThat(response.getFirst()).isEmpty();
+        assertThat(response.getSecond()).isEqualTo(ChannelResponse.OVER_LIMIT);
+        assertThat(logCaptor.getWarnLogs())
+                .anyMatch(log -> log.contains("Channel head count is over limit"));
+    }
+
+    @Test
+    @DisplayName("채널 참여 시, 스레드 경합에 실패해 다른 스레드에 의해 마지막 허용 인원을 채운 경우, 채널에 참여하지 못한다.")
+    void join4() {
+        long userId = 1L;
+        Channel ch = channelRepository.save(Channel.create("ch", 2));
+        userChannelRepository.save(UserChannel.create(userId, ch.getChannelId()));
+
+        Channel channel = Channel.create(ch.getTitle(), 101);
+        when(channelRepository.findLockByChannelId(eq(ch.getChannelId())))
+                .thenReturn(Optional.of(channel));
+
+        Pair<Optional<ChannelReadResponse>, ChannelResponse> response = channelService.join(ch.getChannelInviteCode(), 2L);
+
+        assertThat(channel.getHeadCount()).isEqualTo(101);
+        assertThat(response.getSecond()).isEqualTo(SUCCESS);
+    }
+
+    @Test
+    @DisplayName("채널 참여 시, 모든 조건을 만족하는 경우, 채널 참여에 성공한다.")
+    void join5() {
+        long userId = 1L;
+        Channel ch = channelRepository.save(Channel.create("ch", 2));
+        userChannelRepository.save(UserChannel.create(userId, ch.getChannelId()));
+
+        when(channelRepository.findLockByChannelId(eq(ch.getChannelId())))
+                .thenReturn(Optional.of(ch));
+
+        Pair<Optional<ChannelReadResponse>, ChannelResponse> response = channelService.join(ch.getChannelInviteCode(), 2L);
+
+        assertThat(response.getFirst()).isNotEmpty();
+        assertThat(response.getFirst().get().channelId()).isEqualTo(ch.getChannelId());
+        assertThat(response.getFirst().get().title()).isEqualTo(ch.getTitle());
+        assertThat(response.getFirst().get().headCount()).isEqualTo(2);
+        assertThat(ch.getHeadCount()).isEqualTo(3);
+        assertThat(response.getSecond()).isEqualTo(ChannelResponse.SUCCESS);
     }
 }
