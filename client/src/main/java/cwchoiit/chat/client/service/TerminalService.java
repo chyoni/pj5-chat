@@ -66,7 +66,7 @@ public class TerminalService {
         terminal.puts(InfoCmp.Capability.cursor_up);
         // 현재 커서라인을 지움. 즉, 기존에 입력 프롬프트로 지저분한 라인 지워주는 것
         terminal.puts(InfoCmp.Capability.delete_line);
-        terminal.flush();
+        flush();
         return input;
     }
 
@@ -97,6 +97,12 @@ public class TerminalService {
      */
     public void clearTerminal() {
         terminal.puts(InfoCmp.Capability.clear_screen);
-        terminal.flush();
+        flush();
+    }
+
+    public void flush() {
+        if (terminal != null) {
+            terminal.flush();
+        }
     }
 }
