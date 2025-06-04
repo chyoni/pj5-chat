@@ -126,7 +126,9 @@ class MessageServiceTest extends SpringBootTestConfiguration {
         assertThat(value.getUserId()).isEqualTo(senderId);
         assertThat(value.getContent()).isEqualTo("test");
 
-        verify(sessionManager, times(1)).findSessionByUserId(eq(partnerId));
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(MessageResponse.class));
+        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
+            verify(sessionManager, times(1)).findSessionByUserId(eq(partnerId));
+            verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(MessageResponse.class));
+        });
     }
 }

@@ -118,13 +118,15 @@ class CreateChannelRequestHandlerTest {
         assertThat(captor.getValue().getChannelId()).isEqualTo(channelId);
         assertThat(captor.getValue().getTitle()).isEqualTo(channelTitle);
 
-        verify(sessionManager, times(1)).findSessionByUserId(eq(2L));
-        verify(sessionManager, times(1)).findSessionByUserId(eq(3L));
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
+            verify(sessionManager, times(1)).findSessionByUserId(eq(2L));
+            verify(sessionManager, times(1)).findSessionByUserId(eq(3L));
 
-        verify(sessionManager, times(1)).sendMessage(eq(user2Session), any(ChannelJoinNotificationResponse.class));
-        verify(sessionManager, times(1)).sendMessage(eq(user3Session), any(ChannelJoinNotificationResponse.class));
+            verify(sessionManager, times(1)).sendMessage(eq(user2Session), any(ChannelJoinNotificationResponse.class));
+            verify(sessionManager, times(1)).sendMessage(eq(user3Session), any(ChannelJoinNotificationResponse.class));
 
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(ErrorResponse.class));
+            verify(sessionManager, never()).sendMessage(eq(mockSession), any(ErrorResponse.class));
+        });
     }
 
     @Test

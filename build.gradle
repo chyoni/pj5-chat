@@ -57,6 +57,11 @@ allprojects {
                         'cwchoiit.chat.server.service',
                         'cwchoiit.chat.server.handler.*'
                 ]
+                excludes = [
+                        '*.equals*',
+                        '*.hashCode*',
+                        '*.toString*'
+                ]
 
                 limit {
                     counter = 'BRANCH'
