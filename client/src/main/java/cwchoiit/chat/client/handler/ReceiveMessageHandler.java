@@ -68,5 +68,24 @@ public class ReceiveMessageHandler {
         if (message instanceof ErrorReceiveMessage receivedMessage) {
             terminalService.printSystemMessage("Error: %s".formatted(receivedMessage.getMessage()));
         }
+        if (message instanceof FetchChannelsReceiveMessage receivedMessage) {
+            receivedMessage.getChannels()
+                    .forEach(channel ->
+                            terminalService.printSystemMessage("%s : %s (%d)".formatted(channel.channelId(), channel.title(), channel.headCount()))
+                    );
+        }
+        if (message instanceof FetchChannelInviteCodeReceiveMessage receivedMessage) {
+            terminalService.printSystemMessage("Channel ID: %d, invite code is: %s".formatted(receivedMessage.getChannelId(), receivedMessage.getInviteCode()));
+        }
+        if (message instanceof JoinChannelReceiveMessage receivedMessage) {
+            terminalService.printSystemMessage("Joined channel ID: %d - Title: %s".formatted(receivedMessage.getChannelId(), receivedMessage.getTitle()));
+        }
+        if (message instanceof LeaveChannelReceiveMessage ignored) {
+            terminalService.printSystemMessage("Leave channel ID: %s".formatted(userService.getChannelId()));
+            userService.moveToLobby();
+        }
+        if (message instanceof QuitChannelReceiveMessage receivedMessage) {
+            terminalService.printSystemMessage("Quit channel ID: %s".formatted(receivedMessage.getChannelId()));
+        }
     }
 }

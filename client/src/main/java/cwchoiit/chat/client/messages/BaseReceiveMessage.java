@@ -28,6 +28,11 @@ import static cwchoiit.chat.client.constants.MessageType.*;
         @JsonSubTypes.Type(value = CreateChannelReceiveMessage.class, name = CHANNEL_CREATE_RESPONSE),
         @JsonSubTypes.Type(value = ChannelJoinNotificationReceiveMessage.class, name = NOTIFY_CHANNEL_JOIN),
         @JsonSubTypes.Type(value = EnterChannelReceiveMessage.class, name = ENTER_CHANNEL_RESPONSE),
+        @JsonSubTypes.Type(value = FetchChannelsReceiveMessage.class, name = FETCH_CHANNELS_RESPONSE),
+        @JsonSubTypes.Type(value = JoinChannelReceiveMessage.class, name = JOIN_CHANNEL_RESPONSE),
+        @JsonSubTypes.Type(value = LeaveChannelReceiveMessage.class, name = LEAVE_CHANNEL_RESPONSE),
+        @JsonSubTypes.Type(value = QuitChannelReceiveMessage.class, name = QUIT_CHANNEL_RESPONSE),
+        @JsonSubTypes.Type(value = FetchChannelInviteCodeReceiveMessage.class, name = FETCH_CHANNEL_INVITE_CODE_RESPONSE),
 })
 @RequiredArgsConstructor
 public abstract class BaseReceiveMessage {
