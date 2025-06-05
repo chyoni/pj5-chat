@@ -289,13 +289,13 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
         when(valueOperations.multiGet(anyCollection()))
                 .thenReturn(null);
 
-        List<Long> onlineParticipantIds = channelService.findOnlineParticipantIds(channelId);
+        List<Long> onlineParticipantIds = channelService.findOnlineParticipantIds(channelId, List.of());
 
         assertThat(onlineParticipantIds).isEmpty();
     }
 
     @Test
-    @DisplayName("채널 참여자 중, 온라인 유저들을 찾을 때 모든 값이 정상값인 경우, 정상값을 반환한다.")
+    @DisplayName("채널 참여자 중, 온라인 유저만 찾아와, 정상값을 반환한다.")
     void findOnlineParticipantIds2() {
         long channelId = 100L;
 
@@ -305,22 +305,14 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
         values.add("200");
 
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.multiGet(anyCollection()))
-                .thenReturn(values);
+        doReturn(valueOperations).when(redisTemplate).opsForValue();
+        doReturn(values).when(valueOperations).multiGet(anyCollection());
 
-        when(userChannelRepository.findUserIdsByChannelId(channelId))
-                .thenReturn(List.of(
-                                UserChannel.create(1L, channelId),
-                                UserChannel.create(2L, channelId),
-                                UserChannel.create(3L, channelId)
-                        )
-                );
-
-        List<Long> onlineParticipantIds = channelService.findOnlineParticipantIds(channelId);
+        List<Long> onlineParticipantIds = channelService.findOnlineParticipantIds(channelId, List.of(1L, 2L, 3L));
 
         assertThat(onlineParticipantIds).isNotEmpty();
-        assertThat(onlineParticipantIds).containsExactlyInAnyOrder(1L);
+        assertThat(onlineParticipantIds).contains(1L);
+        assertThat(onlineParticipantIds).containsExactlyInAnyOrder(1L, null, null);
     }
 
     @Test

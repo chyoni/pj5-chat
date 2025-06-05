@@ -5,7 +5,7 @@ import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.EnterChannelResponse;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.service.ChannelService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +35,7 @@ class EnterChannelRequestHandlerTest {
     @Mock
     ChannelService channelService;
     @Mock
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
     @InjectMocks
     EnterChannelRequestHandler enterChannelRequestHandler;
 
@@ -79,8 +79,8 @@ class EnterChannelRequestHandlerTest {
 
         enterChannelRequestHandler.handle(new EnterChannelRequest(channelId), mockSession);
 
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(EnterChannelResponse.class));
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(ErrorResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(requestUserId), any(EnterChannelResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(requestUserId), any(ErrorResponse.class));
     }
 
     @Test
@@ -100,7 +100,7 @@ class EnterChannelRequestHandlerTest {
 
         enterChannelRequestHandler.handle(new EnterChannelRequest(channelId), mockSession);
 
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(EnterChannelResponse.class));
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(requestUserId), any(EnterChannelResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(requestUserId), any(ErrorResponse.class));
     }
 }

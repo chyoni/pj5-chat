@@ -4,7 +4,8 @@ import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.FetchChannelsResponse;
 import cwchoiit.chat.server.service.ChannelService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
+
+import cwchoiit.chat.server.service.ClientNotificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +31,7 @@ class FetchChannelsRequestHandlerTest {
     @Mock
     ChannelService channelService;
     @Mock
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
     @InjectMocks
     FetchChannelsRequestHandler fetchChannelsRequestHandler;
 
@@ -69,6 +70,6 @@ class FetchChannelsRequestHandlerTest {
 
         fetchChannelsRequestHandler.handle(new FetchChannelsRequest(), mockSession);
 
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(FetchChannelsResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(FetchChannelsResponse.class));
     }
 }

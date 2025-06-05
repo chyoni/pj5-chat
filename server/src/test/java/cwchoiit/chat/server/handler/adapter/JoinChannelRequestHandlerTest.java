@@ -6,8 +6,8 @@ import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.JoinChannelResponse;
 import cwchoiit.chat.server.service.ChannelService;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.response.ChannelReadResponse;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +35,7 @@ class JoinChannelRequestHandlerTest {
     @Mock
     ChannelService channelService;
     @Mock
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
     @InjectMocks
     JoinChannelRequestHandler joinChannelRequestHandler;
 
@@ -76,8 +76,8 @@ class JoinChannelRequestHandlerTest {
 
         joinChannelRequestHandler.handle(new JoinChannelRequest("abcd"), mockSession);
 
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(JoinChannelResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(JoinChannelResponse.class));
     }
 
     @Test
@@ -95,8 +95,8 @@ class JoinChannelRequestHandlerTest {
 
         joinChannelRequestHandler.handle(new JoinChannelRequest(inviteCode), mockSession);
 
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(JoinChannelResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(JoinChannelResponse.class));
     }
 
     @Test
@@ -118,7 +118,7 @@ class JoinChannelRequestHandlerTest {
 
         joinChannelRequestHandler.handle(new JoinChannelRequest(inviteCode), mockSession);
 
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(ErrorResponse.class));
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(JoinChannelResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(JoinChannelResponse.class));
     }
 }

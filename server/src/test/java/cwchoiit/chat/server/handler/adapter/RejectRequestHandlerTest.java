@@ -6,8 +6,8 @@ import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.RejectResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserConnectionService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +32,7 @@ class RejectRequestHandlerTest {
     UserConnectionService userConnectionService;
 
     @Mock
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
 
     @InjectMocks
     RejectRequestHandler rejectRequestHandler;
@@ -73,8 +73,8 @@ class RejectRequestHandlerTest {
 
         rejectRequestHandler.handle(rejectRequest, mocked);
 
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mocked), any(RejectResponse.class));
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(mocked), eq(1L), any(RejectResponse.class));
     }
 
     @Test
@@ -93,7 +93,7 @@ class RejectRequestHandlerTest {
 
         rejectRequestHandler.handle(rejectRequest, mocked);
 
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mocked), any(ErrorResponse.class));
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(mocked), eq(1L), any(ErrorResponse.class));
     }
 }

@@ -7,8 +7,8 @@ import cwchoiit.chat.server.handler.request.InviteRequest;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.InviteNotificationResponse;
 import cwchoiit.chat.server.handler.response.InviteResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserConnectionService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
@@ -25,7 +25,7 @@ import static cwchoiit.chat.server.constants.MessageType.INVITE_REQUEST;
 public class InviteRequestHandler implements RequestHandler {
 
     private final UserConnectionService userConnectionService;
-    private final WebSocketSessionManager sessionManager;
+    private final ClientNotificationService clientNotificationService;
 
     @Override
     public String messageType() {
@@ -41,20 +41,22 @@ public class InviteRequestHandler implements RequestHandler {
             result.getFirst().ifPresentOrElse(partnerUserId -> {
 
                 // 초대 신청한 사람에게 응답 메시지
-                sessionManager.sendMessage(
+                clientNotificationService.sendMessage(
                         session,
+                        inviterUserId,
                         new InviteResponse(inviteRequest.getConnectionInviteCode(), UserConnectionStatus.PENDING)
                 );
 
                 // 초대 받은 사람에게 초대 요청 메시지
-                sessionManager.sendMessage(
-                        sessionManager.findSessionByUserId(partnerUserId),
+                clientNotificationService.sendMessage(
+                        partnerUserId,
                         new InviteNotificationResponse(result.getSecond())
                 );
             }, () -> {
                 // 초대 요청 중 에러가 발생한 경우, 초대 신청한 사람에게 에러 메시지
-                sessionManager.sendMessage(
+                clientNotificationService.sendMessage(
                         session,
+                        inviterUserId,
                         new ErrorResponse(INVITE_REQUEST, result.getSecond())
                 );
             });

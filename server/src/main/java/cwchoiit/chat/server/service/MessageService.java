@@ -1,15 +1,19 @@
 package cwchoiit.chat.server.service;
 
+import cwchoiit.chat.common.serializer.Serializer;
+import cwchoiit.chat.server.constants.MessageType;
 import cwchoiit.chat.server.entity.Message;
 import cwchoiit.chat.server.handler.response.MessageResponse;
-import cwchoiit.chat.server.repository.MessageRepository;
+import cwchoiit.chat.server.service.response.ChannelParticipantResponse;
 import cwchoiit.chat.server.session.WebSocketSessionManager;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,35 +21,66 @@ import java.util.concurrent.Executors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class MessageService {
 
     private static final int THREAD_POOL_SIZE = 10;
 
-    private final MessageRepository messageRepository;
+    private final MessageCommandService messageCommandService;
     private final ChannelService channelService;
     private final UserService userService;
+    private final PushService pushService;
     private final WebSocketSessionManager sessionManager;
 
     private final ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
-    @Transactional
+    @PostConstruct
+    public void init() {
+        pushService.registerPushMessageType(MessageType.MESSAGE);
+    }
+
     public void sendMessage(Long channelId, Long senderId, String content) {
-        messageRepository.save(Message.create(senderId, content));
+        MessageResponse messageResponse = new MessageResponse(
+                channelId,
+                userService.findUsernameByUserId(senderId).orElseThrow(),
+                content
+        );
 
-        String senderUsername = userService.findUsernameByUserId(senderId).orElseThrow();
+        Optional<String> serialized = Serializer.serialize(messageResponse);
+        if (serialized.isEmpty()) {
+            log.error("[sendMessage] Send message failed. Message Type = {}", messageResponse.getType());
+            return;
+        }
 
-        channelService.findOnlineParticipantIds(channelId).stream()
-                .filter(participant -> !senderId.equals(participant))
-                .forEach(participant -> CompletableFuture.runAsync(() -> {
-                            WebSocketSession participantSession = sessionManager.findSessionByUserId(participant);
-                            if (participantSession != null) {
-                                sessionManager.sendMessage(
-                                        participantSession,
-                                        new MessageResponse(channelId, senderUsername, content)
-                                );
-                            }
-                        }, pool)
-                );
+        String payload = serialized.get();
+
+        messageCommandService.saveMessage(Message.create(senderId, content));
+
+        List<Long> participantIds = channelService.findParticipantIds(channelId).stream()
+                .map(ChannelParticipantResponse::userId)
+                .toList();
+        List<Long> onlineParticipantIds = channelService.findOnlineParticipantIds(channelId, participantIds);
+
+        for (int i = 0; i < participantIds.size(); i++) {
+            Long participantId = participantIds.get(i);
+            if (senderId.equals(participantId)) {
+                continue;
+            }
+            if (onlineParticipantIds.get(i) != null) {
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        WebSocketSession session = sessionManager.findSessionByUserId(participantId);
+                        if (session != null) {
+                            sessionManager.sendMessage(session, payload);
+                        } else {
+                            pushService.pushMessage(participantId, MessageType.MESSAGE, payload);
+                        }
+                    } catch (Exception e) {
+                        pushService.pushMessage(participantId, MessageType.MESSAGE, payload);
+                    }
+                }, pool);
+            } else {
+                pushService.pushMessage(participantId, MessageType.MESSAGE, payload);
+            }
+        }
     }
 }

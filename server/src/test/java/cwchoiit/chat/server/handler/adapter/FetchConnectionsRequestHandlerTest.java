@@ -5,9 +5,9 @@ import cwchoiit.chat.server.constants.MessageType;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.FetchConnectionsResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserConnectionService;
 import cwchoiit.chat.server.service.response.UserReadResponse;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +31,7 @@ class FetchConnectionsRequestHandlerTest {
     @Mock
     UserConnectionService userConnectionService;
     @Mock
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
     @InjectMocks
     FetchConnectionsRequestHandler fetchConnectionsRequestHandler;
 
@@ -77,7 +77,7 @@ class FetchConnectionsRequestHandlerTest {
 
         fetchConnectionsRequestHandler.handle(fetchConnectionsRequest, mocked);
 
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mocked), any(FetchConnectionsResponse.class));
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(mocked), eq(1L), any(FetchConnectionsResponse.class));
     }
 }

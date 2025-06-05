@@ -2,6 +2,7 @@ package cwchoiit.chat.server.handler.adapter;
 
 import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.request.MessageRequest;
+import cwchoiit.chat.server.handler.response.MessageResponse;
 import cwchoiit.chat.server.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

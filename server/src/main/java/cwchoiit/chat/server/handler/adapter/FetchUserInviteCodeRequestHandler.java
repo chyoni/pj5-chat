@@ -5,8 +5,8 @@ import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.request.FetchUserInviteCodeRequest;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.FetchUserInviteCodeResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -20,7 +20,7 @@ import static cwchoiit.chat.server.constants.MessageType.FETCH_USER_INVITE_CODE_
 public class FetchUserInviteCodeRequestHandler implements RequestHandler {
 
     private final UserService userService;
-    private final WebSocketSessionManager sessionManager;
+    private final ClientNotificationService clientNotificationService;
 
     @Override
     public String messageType() {
@@ -33,12 +33,14 @@ public class FetchUserInviteCodeRequestHandler implements RequestHandler {
             Long requestUserId = (Long) session.getAttributes().get(IdKey.USER_ID.getValue());
             userService.findInviteCodeByUserId(requestUserId)
                     .ifPresentOrElse(
-                            inviteCode -> sessionManager.sendMessage(
+                            inviteCode -> clientNotificationService.sendMessage(
                                     session,
+                                    requestUserId,
                                     new FetchUserInviteCodeResponse(inviteCode)
                             ),
-                            () -> sessionManager.sendMessage(
+                            () -> clientNotificationService.sendMessage(
                                     session,
+                                    requestUserId,
                                     new ErrorResponse(FETCH_USER_INVITE_CODE_REQUEST, "No invite code found.")
                             )
                     );

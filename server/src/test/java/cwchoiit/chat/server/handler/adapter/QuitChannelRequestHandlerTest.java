@@ -6,7 +6,8 @@ import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.QuitChannelResponse;
 import cwchoiit.chat.server.service.ChannelService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
+
+import cwchoiit.chat.server.service.ClientNotificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +33,7 @@ class QuitChannelRequestHandlerTest {
     @Mock
     ChannelService channelService;
     @Mock
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
     @InjectMocks
     QuitChannelRequestHandler quitChannelRequestHandler;
 
@@ -74,8 +75,8 @@ class QuitChannelRequestHandlerTest {
 
         quitChannelRequestHandler.handle(new QuitChannelRequest(channelId), mockSession);
 
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(QuitChannelResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(QuitChannelResponse.class));
     }
 
     @Test
@@ -93,8 +94,8 @@ class QuitChannelRequestHandlerTest {
                 .thenReturn(ChannelResponse.FAILED);
         quitChannelRequestHandler.handle(new QuitChannelRequest(channelId), mockSession);
 
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(QuitChannelResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(QuitChannelResponse.class));
     }
 
     @Test
@@ -112,7 +113,7 @@ class QuitChannelRequestHandlerTest {
                 .thenReturn(ChannelResponse.SUCCESS);
         quitChannelRequestHandler.handle(new QuitChannelRequest(channelId), mockSession);
 
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(ErrorResponse.class));
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(QuitChannelResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(QuitChannelResponse.class));
     }
 }

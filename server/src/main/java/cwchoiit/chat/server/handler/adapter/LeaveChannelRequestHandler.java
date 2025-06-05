@@ -6,7 +6,7 @@ import cwchoiit.chat.server.handler.request.LeaveChannelRequest;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.LeaveChannelResponse;
 import cwchoiit.chat.server.service.ChannelService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -20,7 +20,7 @@ import static cwchoiit.chat.server.constants.MessageType.LEAVE_CHANNEL_REQUEST;
 public class LeaveChannelRequestHandler implements RequestHandler {
 
     private final ChannelService channelService;
-    private final WebSocketSessionManager sessionManager;
+    private final ClientNotificationService clientNotificationService;
 
     @Override
     public String messageType() {
@@ -33,10 +33,11 @@ public class LeaveChannelRequestHandler implements RequestHandler {
             Long requestUserId = (Long) session.getAttributes().get(IdKey.USER_ID.getValue());
 
             if (channelService.leave(requestUserId)) {
-                sessionManager.sendMessage(session, new LeaveChannelResponse());
+                clientNotificationService.sendMessage(session, requestUserId, new LeaveChannelResponse());
             } else {
-                sessionManager.sendMessage(
+                clientNotificationService.sendMessage(
                         session,
+                        requestUserId,
                         new ErrorResponse(LEAVE_CHANNEL_REQUEST, "You are not in this channel.")
                 );
             }

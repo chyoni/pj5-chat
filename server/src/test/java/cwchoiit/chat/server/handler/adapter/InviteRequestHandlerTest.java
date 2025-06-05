@@ -10,8 +10,8 @@ import cwchoiit.chat.server.handler.request.MessageRequest;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.InviteNotificationResponse;
 import cwchoiit.chat.server.handler.response.InviteResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserConnectionService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -39,7 +39,7 @@ class InviteRequestHandlerTest extends SpringBootTestConfiguration {
     UserConnectionService userConnectionService;
 
     @MockitoSpyBean
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
 
     @Autowired
     InviteRequestHandler inviteRequestHandler;
@@ -79,21 +79,19 @@ class InviteRequestHandlerTest extends SpringBootTestConfiguration {
         when(userConnectionService.invite(eq(inviterUserId), eq(inviteRequest.getConnectionInviteCode())))
                 .thenReturn(Pair.of(Optional.of(2L), ""));
 
-        when(sessionManager.findSessionByUserId(eq(2L))).thenReturn(mock(WebSocketSession.class));
-
         inviteRequestHandler.handle(inviteRequest, mockSession);
 
         ArgumentCaptor<InviteResponse> captor = ArgumentCaptor.forClass(InviteResponse.class);
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), captor.capture());
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(1L), captor.capture());
 
         InviteResponse value = captor.getValue();
         assertThat(value.getConnectionInviteCode()).isEqualTo(inviteCode);
         assertThat(value.getStatus()).isEqualTo(UserConnectionStatus.PENDING);
 
-        verify(sessionManager, times(1))
-                .sendMessage(any(), any(InviteNotificationResponse.class));
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(2L), any(InviteNotificationResponse.class));
 
-        verify(sessionManager, times(1)).findSessionByUserId(eq(2L));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(1L), any(ErrorResponse.class));
     }
 
     @Test
@@ -118,10 +116,10 @@ class InviteRequestHandlerTest extends SpringBootTestConfiguration {
 
         ArgumentCaptor<ErrorResponse> captor = ArgumentCaptor.forClass(ErrorResponse.class);
 
-        verify(sessionManager, times(1)).sendMessage(any(), any());
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(1L), any(InviteResponse.class));
 
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mockSession), captor.capture());
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(mockSession), eq(1L), captor.capture());
 
         ErrorResponse value = captor.getValue();
         assertThat(value.getMessageType()).isEqualTo(INVITE_REQUEST);

@@ -8,9 +8,9 @@ import cwchoiit.chat.server.handler.response.ChannelJoinNotificationResponse;
 import cwchoiit.chat.server.handler.response.CreateChannelResponse;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.service.ChannelService;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserService;
 import cwchoiit.chat.server.service.response.ChannelCreateResponse;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
@@ -36,7 +36,7 @@ public class CreateChannelRequestHandler implements RequestHandler {
 
     private final ChannelService channelService;
     private final UserService userService;
-    private final WebSocketSessionManager sessionManager;
+    private final ClientNotificationService clientNotificationService;
 
     private final ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
@@ -55,8 +55,9 @@ public class CreateChannelRequestHandler implements RequestHandler {
 
             // 채널 메시지 대상자가 없는 경우 처리
             if (participantIds.isEmpty()) {
-                sessionManager.sendMessage(
+                clientNotificationService.sendMessage(
                         session,
+                        creatorId,
                         new ErrorResponse(CHANNEL_CREATE_REQUEST, NOT_FOUND.getMessage())
                 );
                 return;
@@ -72,35 +73,34 @@ public class CreateChannelRequestHandler implements RequestHandler {
 
                 result.getFirst().ifPresentOrElse(channel -> {
                             // 다이렉트 채널 생성자에게 노티
-                            sessionManager.sendMessage(
+                            clientNotificationService.sendMessage(
                                     session,
+                                    creatorId,
                                     new CreateChannelResponse(channel.channelId(), channel.title())
                             );
 
                             // 다이렉트 채널 대상자에게 노티
                             participantIds.forEach(participantId ->
-                                    CompletableFuture.runAsync(() -> {
-                                        WebSocketSession participantSession = sessionManager.findSessionByUserId(participantId);
-                                        if (participantSession != null) {
-                                            sessionManager.sendMessage(
-                                                    participantSession,
+                                    CompletableFuture.runAsync(() ->
+                                            clientNotificationService.sendMessage(
+                                                    participantId,
                                                     new ChannelJoinNotificationResponse(channel.channelId(), channel.title())
-                                            );
-                                        }
-                                    }, pool)
+                                            ), pool)
                             );
                         },
                         // 다이렉트 채널 생성 실패 시 노티
-                        () -> sessionManager.sendMessage(
+                        () -> clientNotificationService.sendMessage(
                                 session,
+                                creatorId,
                                 new ErrorResponse(CHANNEL_CREATE_REQUEST, result.getSecond().getMessage())
                         )
                 );
             } catch (Exception e) {
                 // 채널 생성 중 예외 발생
                 log.error("[handle] Exception occurred while creating channel.", e);
-                sessionManager.sendMessage(
+                clientNotificationService.sendMessage(
                         session,
+                        creatorId,
                         new ErrorResponse(CHANNEL_CREATE_REQUEST, FAILED.getMessage())
                 );
             }

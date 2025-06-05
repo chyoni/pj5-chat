@@ -187,12 +187,23 @@ public class ChannelService {
                 .map(Channel::getChannelInviteCode);
     }
 
-    public List<Long> findOnlineParticipantIds(Long channelId) {
-        List<Long> userIdsInChannel = findParticipantIds(channelId).stream()
-                .map(ChannelParticipantResponse::userId)
-                .toList();
+    public List<Long> findOnlineParticipantIds(Long channelId, List<Long> userIds) {
+        List<String> keys = userIds.stream().map(this::generateKey).toList();
+        List<String> channelIds = redisTemplate.opsForValue().multiGet(keys);
+        if (channelIds == null) {
+            return List.of();
+        }
 
-        return findOnlineParticipantIds(channelId, userIdsInChannel);
+        List<Long> onlineUserIds = new ArrayList<>(userIds.size());
+        for (int i = 0; i < userIds.size(); i++) {
+            String chId = channelIds.get(i);
+            onlineUserIds.add(chId != null && chId.equals(channelId.toString()) ?
+                    userIds.get(i) :
+                    null
+            );
+        }
+
+        return onlineUserIds;
     }
 
     public List<ChannelReadResponse> findChannelsByUserId(Long userId) {
@@ -227,24 +238,6 @@ public class ChannelService {
 
     private boolean removeActiveChannel(Long userId) {
         return redisTemplate.delete(generateKey(userId));
-    }
-
-    private List<Long> findOnlineParticipantIds(Long channelId, List<Long> userIds) {
-        List<String> keys = userIds.stream().map(this::generateKey).toList();
-        List<String> channelIds = redisTemplate.opsForValue().multiGet(keys);
-        if (channelIds == null) {
-            return List.of();
-        }
-
-        List<Long> onlineUserIds = new ArrayList<>();
-        for (int i = 0; i < userIds.size(); i++) {
-            String chId = channelIds.get(i);
-            if (chId != null && chId.equals(channelId.toString())) {
-                onlineUserIds.add(userIds.get(i));
-            }
-        }
-
-        return onlineUserIds;
     }
 
     private String generateKey(Long userId) {

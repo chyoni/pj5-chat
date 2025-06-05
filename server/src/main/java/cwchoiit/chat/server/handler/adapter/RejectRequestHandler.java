@@ -5,6 +5,7 @@ import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.request.RejectRequest;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.RejectResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserConnectionService;
 import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,7 @@ import static cwchoiit.chat.server.constants.UserConnectionStatus.REJECTED;
 public class RejectRequestHandler implements RequestHandler {
 
     private final UserConnectionService userConnectionService;
-    private final WebSocketSessionManager sessionManager;
+    private final ClientNotificationService clientNotificationService;
 
     @Override
     public String messageType() {
@@ -36,13 +37,18 @@ public class RejectRequestHandler implements RequestHandler {
             Pair<Boolean, String> result = userConnectionService.reject(declinerId, rejectRequest.getInviterUsername());
 
             if (result.getFirst()) { // 초대 거절에 성공한 경우
-                sessionManager.sendMessage(
+                clientNotificationService.sendMessage(
                         session,
+                        declinerId,
                         new RejectResponse(rejectRequest.getInviterUsername(), REJECTED)
                 );
             } else { // 초대 거절에 실패한 경우
                 String errorMessage = result.getSecond();
-                sessionManager.sendMessage(session, new ErrorResponse(REJECT_REQUEST, errorMessage));
+                clientNotificationService.sendMessage(
+                        session,
+                        declinerId,
+                        new ErrorResponse(REJECT_REQUEST, errorMessage)
+                );
             }
         }
     }

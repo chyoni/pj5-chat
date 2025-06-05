@@ -9,8 +9,8 @@ import cwchoiit.chat.server.handler.request.MessageRequest;
 import cwchoiit.chat.server.handler.response.AcceptNotificationResponse;
 import cwchoiit.chat.server.handler.response.AcceptResponse;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserConnectionService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +35,7 @@ class AcceptRequestHandlerTest extends SpringBootTestConfiguration {
     UserConnectionService userConnectionService;
 
     @MockitoBean
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
 
     @Autowired
     AcceptRequestHandler acceptRequestHandler;
@@ -74,13 +74,11 @@ class AcceptRequestHandlerTest extends SpringBootTestConfiguration {
 
         acceptRequestHandler.handle(new AcceptRequest("inviter"), mockSession);
 
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mockSession), any(AcceptResponse.class));
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(mockSession), eq(acceptorId), any(AcceptResponse.class));
 
-        verify(sessionManager, times(1)).findSessionByUserId(eq(inviterId));
-
-        verify(sessionManager, times(1))
-                .sendMessage(any(), any(AcceptNotificationResponse.class));
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(inviterId), any(AcceptNotificationResponse.class));
     }
 
     @Test
@@ -100,13 +98,11 @@ class AcceptRequestHandlerTest extends SpringBootTestConfiguration {
 
         acceptRequestHandler.handle(new AcceptRequest("inviter"), mockSession);
 
-        verify(sessionManager, never())
-                .sendMessage(eq(mockSession), any(AcceptResponse.class));
-        verify(sessionManager, never())
-                .sendMessage(any(), any(AcceptNotificationResponse.class));
-        verify(sessionManager, never())
-                .findSessionByUserId(eq(inviterId));
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mockSession), any(ErrorResponse.class));
+        verify(clientNotificationService, never())
+                .sendMessage(eq(mockSession), eq(acceptorId), any(AcceptResponse.class));
+        verify(clientNotificationService, never())
+                .sendMessage(any(), eq(inviterId), any(AcceptNotificationResponse.class));
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(mockSession), eq(acceptorId), any(ErrorResponse.class));
     }
 }

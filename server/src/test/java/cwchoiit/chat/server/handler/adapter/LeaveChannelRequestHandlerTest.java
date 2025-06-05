@@ -5,7 +5,8 @@ import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.LeaveChannelResponse;
 import cwchoiit.chat.server.service.ChannelService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
+
+import cwchoiit.chat.server.service.ClientNotificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +32,7 @@ class LeaveChannelRequestHandlerTest {
     @Mock
     ChannelService channelService;
     @Mock
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
     @InjectMocks
     LeaveChannelRequestHandler leaveChannelRequestHandler;
 
@@ -72,8 +73,8 @@ class LeaveChannelRequestHandlerTest {
 
         leaveChannelRequestHandler.handle(new LeaveChannelRequest(), mockSession);
 
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(LeaveChannelResponse.class));
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(ErrorResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(LeaveChannelResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
     }
 
     @Test
@@ -90,7 +91,7 @@ class LeaveChannelRequestHandlerTest {
 
         leaveChannelRequestHandler.handle(new LeaveChannelRequest(), mockSession);
 
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(LeaveChannelResponse.class));
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(LeaveChannelResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
     }
 }

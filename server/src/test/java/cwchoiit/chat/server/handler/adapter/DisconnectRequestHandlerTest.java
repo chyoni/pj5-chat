@@ -5,8 +5,8 @@ import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.DisconnectResponse;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserConnectionService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +33,7 @@ class DisconnectRequestHandlerTest {
     @Mock
     UserConnectionService userConnectionService;
     @Mock
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
     @InjectMocks
     DisconnectRequestHandler disconnectRequestHandler;
 
@@ -76,14 +76,14 @@ class DisconnectRequestHandlerTest {
         disconnectRequestHandler.handle(new DisconnectRequest(peer), mockSession);
 
         ArgumentCaptor<DisconnectResponse> captor = ArgumentCaptor.forClass(DisconnectResponse.class);
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mockSession), captor.capture());
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(mockSession), eq(requestUserId), captor.capture());
         DisconnectResponse value = captor.getValue();
         assertThat(value.getStatus()).isEqualTo(UserConnectionStatus.DISCONNECTED);
         assertThat(value.getUsername()).isEqualTo(peer);
 
-        verify(sessionManager, never())
-                .sendMessage(eq(mockSession), any(ErrorResponse.class));
+        verify(clientNotificationService, never())
+                .sendMessage(eq(mockSession), eq(requestUserId), any(ErrorResponse.class));
     }
 
     @Test
@@ -104,12 +104,12 @@ class DisconnectRequestHandlerTest {
         disconnectRequestHandler.handle(new DisconnectRequest(peer), mockSession);
 
         ArgumentCaptor<ErrorResponse> captor = ArgumentCaptor.forClass(ErrorResponse.class);
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mockSession), captor.capture());
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(mockSession), eq(requestUserId), captor.capture());
         ErrorResponse value = captor.getValue();
         assertThat(value.getMessage()).isEqualTo("errorMessage");
         assertThat(value.getMessageType()).isEqualTo(DISCONNECT_REQUEST);
 
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(DisconnectResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(requestUserId), any(DisconnectResponse.class));
     }
 }

@@ -3,14 +3,12 @@ package cwchoiit.chat.server.handler.adapter;
 import cwchoiit.chat.server.constants.ChannelResponse;
 import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.handler.request.BaseRequest;
-import cwchoiit.chat.server.handler.request.FetchChannelsRequest;
 import cwchoiit.chat.server.handler.request.JoinChannelRequest;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
-import cwchoiit.chat.server.handler.response.FetchChannelsResponse;
 import cwchoiit.chat.server.handler.response.JoinChannelResponse;
 import cwchoiit.chat.server.service.ChannelService;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.response.ChannelReadResponse;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
@@ -19,7 +17,6 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.util.Optional;
 
-import static cwchoiit.chat.server.constants.MessageType.FETCH_CHANNELS_REQUEST;
 import static cwchoiit.chat.server.constants.MessageType.JOIN_CHANNEL_REQUEST;
 
 @Slf4j
@@ -28,7 +25,7 @@ import static cwchoiit.chat.server.constants.MessageType.JOIN_CHANNEL_REQUEST;
 public class JoinChannelRequestHandler implements RequestHandler {
 
     private final ChannelService channelService;
-    private final WebSocketSessionManager sessionManager;
+    private final ClientNotificationService clientNotificationService;
 
     @Override
     public String messageType() {
@@ -45,18 +42,21 @@ public class JoinChannelRequestHandler implements RequestHandler {
                         channelService.join(joinChannelRequest.getInviteCode(), requestUserId);
 
                 response.getFirst().ifPresentOrElse(
-                        channel -> sessionManager.sendMessage(
+                        channel -> clientNotificationService.sendMessage(
                                 session,
+                                requestUserId,
                                 new JoinChannelResponse(channel.channelId(), channel.title())
                         ),
-                        () -> sessionManager.sendMessage(
+                        () -> clientNotificationService.sendMessage(
                                 session,
+                                requestUserId,
                                 new ErrorResponse(JOIN_CHANNEL_REQUEST, response.getSecond().getMessage())
                         )
                 );
             } catch (Exception e) {
-                sessionManager.sendMessage(
+                clientNotificationService.sendMessage(
                         session,
+                        requestUserId,
                         new ErrorResponse(JOIN_CHANNEL_REQUEST, e.getMessage())
                 );
             }
