@@ -1,7 +1,5 @@
 package cwchoiit.chat.server.session;
 
-import cwchoiit.chat.common.serializer.Serializer;
-import cwchoiit.chat.server.handler.response.BaseResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
@@ -47,17 +45,13 @@ public class WebSocketSessionManager {
         }
     }
 
-    public void sendMessage(WebSocketSession session, BaseResponse baseResponse) {
-        Serializer.serialize(baseResponse)
-                .ifPresent(serializedMessage -> proceedSendMessage(session, baseResponse, serializedMessage));
-    }
-
-    private void proceedSendMessage(WebSocketSession session, BaseResponse baseResponse, String serializedMessage) {
+    public void sendMessage(WebSocketSession session, String message) throws IOException {
         try {
-            session.sendMessage(new TextMessage(serializedMessage));
-            log.info("[sendMessage] Sent TextMessage: [{}] to {}", baseResponse, session.getId());
-        } catch (Exception e) {
-            log.error("[sendMessage] Failed to send TextMessage: [{}] to {}", baseResponse, session.getId(), e);
+            session.sendMessage(new TextMessage(message));
+            log.info("[sendMessage] Sent TextMessage: [{}] to {}", message, session.getId());
+        } catch (IOException e) {
+            log.error("[sendMessage] Failed to send TextMessage: [{}] to {}", message, session.getId(), e);
+            throw e;
         }
     }
 }

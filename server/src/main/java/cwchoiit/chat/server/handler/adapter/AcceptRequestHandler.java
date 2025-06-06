@@ -6,8 +6,8 @@ import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.response.AcceptNotificationResponse;
 import cwchoiit.chat.server.handler.response.AcceptResponse;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserConnectionService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
@@ -24,7 +24,7 @@ import static cwchoiit.chat.server.constants.MessageType.ACCEPT_REQUEST;
 public class AcceptRequestHandler implements RequestHandler {
 
     private final UserConnectionService userConnectionService;
-    private final WebSocketSessionManager sessionManager;
+    private final ClientNotificationService clientNotificationService;
 
     @Override
     public String messageType() {
@@ -40,22 +40,27 @@ public class AcceptRequestHandler implements RequestHandler {
             result.getFirst().ifPresentOrElse(
                     inviterUserId -> {
                         // 초대를 받고 수락을 한 사용자에게 안내 메시지 (To. Acceptor)
-                        sessionManager.sendMessage(
+                        clientNotificationService.sendMessage(
                                 session,
+                                acceptorId,
                                 new AcceptResponse(acceptRequest.getInviterUsername())
                         );
 
                         // 초대한 사람에게 결과를 보내주는 메시지 (To. Inviter)
                         String acceptorUsername = result.getSecond();
-                        sessionManager.sendMessage(
-                                sessionManager.findSessionByUserId(inviterUserId),
+                        clientNotificationService.sendMessage(
+                                inviterUserId,
                                 new AcceptNotificationResponse(acceptorUsername)
                         );
                     },
                     () -> {
                         // 초대에 대한 수락을 하려 했으나, 에러가 발생한 경우 (To. Acceptor)
                         String errorMessage = result.getSecond();
-                        sessionManager.sendMessage(session, new ErrorResponse(ACCEPT_REQUEST, errorMessage));
+                        clientNotificationService.sendMessage(
+                                session,
+                                acceptorId,
+                                new ErrorResponse(ACCEPT_REQUEST, errorMessage)
+                        );
                     }
             );
         }

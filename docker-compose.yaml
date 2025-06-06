@@ -1,18 +1,62 @@
 name: pj5-chat
 
 services:
-  mysql:
-    hostname: pj5-chat-mysql
-    container_name: pj5-chat-mysql
+  mysql-source:
+    hostname: pj5-chat-mysql-source
+    container_name: pj5-chat-mysql-source
+    healthcheck:
+      test: [ 'CMD', 'mysqladmin', 'ping', '-h', 'localhost' ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     image: mysql:8.0.38
     restart: unless-stopped
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=chat
+      - MYSQL_USER=chatdev
+      - MYSQL_PASSWORD=chatdev
     ports:
-      - "3306:3306"
+      - '3306:3306'
     volumes:
-      - ./docker/data/mysql:/var/lib/mysql
+      - ./docker/data/mysql-source:/var/lib/mysql
+      - ./docker/init-scripts-source:/docker-entrypoint-initdb.d
+    command: >
+      --server-id=1
+      --log_bin=/var/lib/mysql/mysql-bin.log
+      --enforce-gtid-consistency=ON
+      --gtid-mode=ON
+
+    # --server-id=1 : 각 MySQL 서버의 고유 ID
+    # --log_bin=/var/lib/mysql/mysql-bin.log : Binary Log를 활성화하고 저장 위치를 지정
+    # Source 에서 일어나는 모든 변경사항을 기록, Replica는 이 로그를 읽어서 복제
+
+    # --enforce-gtid-consistency=ON : GTID 와 호환되지 않는 SQL 명령을 차단
+    # --gtid-mode=ON : GTID(Global Transaction ID) 활성화, 각 트랜잭션의 고유 ID 부여. 형식: `server_uuid:transaction_id`
+
+  mysql-replica:
+    hostname: pj5-chat-mysql-replica
+    container_name: pj5-chat-mysql-replica
+    image: mysql:8.0.38
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    ports:
+      - '13306:3306'
+    volumes:
+      - ./docker/data/mysql-replica:/var/lib/mysql
+      - ./docker/init-scripts-replica:/docker-entrypoint-initdb.d
+    depends_on:
+      mysql-source:
+        condition: service_healthy
+    command: >
+      --server-id=2
+      --relay_log=/var/lib/mysql/mysql-relay-bin.log
+      --enforce-gtid-consistency=ON
+      --gtid-mode=ON
+      --read-only=1
+    # --relay_log=/var/lib/mysql/mysql-relay-bin.log : Source의 Binary Log를 Replica가 로컬에 복사해둔 파일
+    # Replica 만의 중간 저장소 역할
 
   redis:
     hostname: pj5-chat-redis

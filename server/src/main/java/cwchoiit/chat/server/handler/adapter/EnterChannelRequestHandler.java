@@ -7,7 +7,7 @@ import cwchoiit.chat.server.handler.request.EnterChannelRequest;
 import cwchoiit.chat.server.handler.response.EnterChannelResponse;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.service.ChannelService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
@@ -24,7 +24,7 @@ import static cwchoiit.chat.server.constants.MessageType.ENTER_CHANNEL_REQUEST;
 public class EnterChannelRequestHandler implements RequestHandler {
 
     private final ChannelService channelService;
-    private final WebSocketSessionManager sessionManager;
+    private final ClientNotificationService clientNotificationService;
 
     @Override
     public String messageType() {
@@ -42,12 +42,14 @@ public class EnterChannelRequestHandler implements RequestHandler {
             );
 
             result.getFirst().ifPresentOrElse(
-                    title -> sessionManager.sendMessage(
+                    title -> clientNotificationService.sendMessage(
                             session,
+                            requestUserId,
                             new EnterChannelResponse(enterChannelRequest.getChannelId(), title)
                     ),
-                    () -> sessionManager.sendMessage(
+                    () -> clientNotificationService.sendMessage(
                             session,
+                            requestUserId,
                             new ErrorResponse(ENTER_CHANNEL_REQUEST, result.getSecond().getMessage())
                     )
             );

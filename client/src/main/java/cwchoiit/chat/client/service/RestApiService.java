@@ -26,9 +26,8 @@ public class RestApiService {
 
     private final TerminalService terminalService;
     private final String url;
-    private String sessionId;
-
     private final HttpClient httpClient = HttpClient.newHttpClient();
+    private String sessionId;
 
     public RestApiService(TerminalService terminalService, String url) {
         this.terminalService = terminalService;
@@ -54,7 +53,7 @@ public class RestApiService {
      * @return true if the unregistration was successful, false otherwise.
      */
     public boolean unregister() {
-        if (sessionId.isEmpty()) {
+        if (sessionId == null || sessionId.isEmpty()) {
             return false;
         }
 
@@ -86,7 +85,7 @@ public class RestApiService {
      * @return true if the logout was successful, false otherwise.
      */
     public boolean logout() {
-        if (sessionId.isEmpty()) {
+        if (sessionId == null || sessionId.isEmpty()) {
             return false;
         }
 

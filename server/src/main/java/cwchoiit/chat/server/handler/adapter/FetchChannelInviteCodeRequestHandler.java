@@ -5,7 +5,7 @@ import cwchoiit.chat.server.handler.request.FetchChannelInviteCodeRequest;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.FetchChannelInviteCodeResponse;
 import cwchoiit.chat.server.service.ChannelService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -20,7 +20,7 @@ import static cwchoiit.chat.server.constants.MessageType.FETCH_CHANNEL_INVITE_CO
 public class FetchChannelInviteCodeRequestHandler implements RequestHandler {
 
     private final ChannelService channelService;
-    private final WebSocketSessionManager sessionManager;
+    private final ClientNotificationService clientNotificationService;
 
     @Override
     public String messageType() {
@@ -35,18 +35,21 @@ public class FetchChannelInviteCodeRequestHandler implements RequestHandler {
             if (channelService.isJoined(fetchChannelInviteCodeRequest.getChannelId(), callerId)) {
                 channelService.findInviteCode(fetchChannelInviteCodeRequest.getChannelId())
                         .ifPresentOrElse(
-                                inviteCode -> sessionManager.sendMessage(
+                                inviteCode -> clientNotificationService.sendMessage(
                                         session,
+                                        callerId,
                                         new FetchChannelInviteCodeResponse(fetchChannelInviteCodeRequest.getChannelId(), inviteCode)
                                 ),
-                                () -> sessionManager.sendMessage(
+                                () -> clientNotificationService.sendMessage(
                                         session,
+                                        callerId,
                                         new ErrorResponse(FETCH_CHANNEL_INVITE_CODE_REQUEST, "No invite code found.")
                                 )
                         );
             } else {
-                sessionManager.sendMessage(
+                clientNotificationService.sendMessage(
                         session,
+                        callerId,
                         new ErrorResponse(FETCH_CHANNEL_INVITE_CODE_REQUEST, "You are not joined to this channel.")
                 );
             }

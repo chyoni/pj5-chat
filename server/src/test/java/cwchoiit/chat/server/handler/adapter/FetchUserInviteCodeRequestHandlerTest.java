@@ -6,8 +6,8 @@ import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.FetchUserInviteCodeResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +32,7 @@ class FetchUserInviteCodeRequestHandlerTest {
     UserService userService;
 
     @Mock
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
 
     @InjectMocks
     FetchUserInviteCodeRequestHandler fetchUserInviteCodeRequestHandler;
@@ -73,10 +73,10 @@ class FetchUserInviteCodeRequestHandlerTest {
 
         fetchUserInviteCodeRequestHandler.handle(fetchUserInviteCodeRequest, mocked);
 
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mocked), any(FetchUserInviteCodeResponse.class));
-        verify(sessionManager, never())
-                .sendMessage(eq(mocked), any(ErrorResponse.class));
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(mocked), eq(1L), any(FetchUserInviteCodeResponse.class));
+        verify(clientNotificationService, never())
+                .sendMessage(eq(mocked), eq(1L), any(ErrorResponse.class));
     }
 
     @Test
@@ -95,9 +95,9 @@ class FetchUserInviteCodeRequestHandlerTest {
 
         fetchUserInviteCodeRequestHandler.handle(fetchUserInviteCodeRequest, mocked);
 
-        verify(sessionManager, times(1))
-                .sendMessage(eq(mocked), any(ErrorResponse.class));
-        verify(sessionManager, never())
-                .sendMessage(eq(mocked), any(FetchUserInviteCodeResponse.class));
+        verify(clientNotificationService, times(1))
+                .sendMessage(eq(mocked), eq(1L), any(ErrorResponse.class));
+        verify(clientNotificationService, never())
+                .sendMessage(eq(mocked), eq(1L), any(FetchUserInviteCodeResponse.class));
     }
 }

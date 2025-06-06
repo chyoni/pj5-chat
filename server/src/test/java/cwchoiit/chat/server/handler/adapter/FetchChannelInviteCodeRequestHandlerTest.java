@@ -5,7 +5,7 @@ import cwchoiit.chat.server.handler.request.*;
 import cwchoiit.chat.server.handler.response.ErrorResponse;
 import cwchoiit.chat.server.handler.response.FetchChannelInviteCodeResponse;
 import cwchoiit.chat.server.service.ChannelService;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +33,7 @@ class FetchChannelInviteCodeRequestHandlerTest {
     @Mock
     ChannelService channelService;
     @Mock
-    WebSocketSessionManager sessionManager;
+    ClientNotificationService clientNotificationService;
     @InjectMocks
     FetchChannelInviteCodeRequestHandler fetchChannelInviteCodeRequestHandler;
 
@@ -75,9 +75,9 @@ class FetchChannelInviteCodeRequestHandlerTest {
 
         fetchChannelInviteCodeRequestHandler.handle(new FetchChannelInviteCodeRequest(channelId), mockSession);
 
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
         verify(channelService, never()).findInviteCode(anyLong());
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(FetchChannelInviteCodeResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(FetchChannelInviteCodeResponse.class));
     }
 
     @Test
@@ -96,8 +96,8 @@ class FetchChannelInviteCodeRequestHandlerTest {
 
         fetchChannelInviteCodeRequestHandler.handle(new FetchChannelInviteCodeRequest(channelId), mockSession);
 
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), any(ErrorResponse.class));
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(FetchChannelInviteCodeResponse.class));
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(FetchChannelInviteCodeResponse.class));
     }
 
     @Test
@@ -116,10 +116,10 @@ class FetchChannelInviteCodeRequestHandlerTest {
 
         fetchChannelInviteCodeRequestHandler.handle(new FetchChannelInviteCodeRequest(channelId), mockSession);
 
-        verify(sessionManager, never()).sendMessage(eq(mockSession), any(ErrorResponse.class));
+        verify(clientNotificationService, never()).sendMessage(eq(mockSession), eq(callerId), any(ErrorResponse.class));
 
         ArgumentCaptor<FetchChannelInviteCodeResponse> captor = ArgumentCaptor.forClass(FetchChannelInviteCodeResponse.class);
-        verify(sessionManager, times(1)).sendMessage(eq(mockSession), captor.capture());
+        verify(clientNotificationService, times(1)).sendMessage(eq(mockSession), eq(callerId), captor.capture());
 
         FetchChannelInviteCodeResponse value = captor.getValue();
         assertThat(value.getInviteCode()).isEqualTo("inviteCode");

@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -126,10 +127,10 @@ class WebSocketSessionManagerTest {
         webSocketSessionManager.storeSession(1L, mockSession);
 
         MessageResponse baseResponse = new MessageResponse(1L, "inviter", "message");
-        webSocketSessionManager.sendMessage(mockSession, baseResponse);
+        webSocketSessionManager.sendMessage(mockSession, baseResponse.getContent());
 
         verify(mockSession, times(1))
-                .sendMessage(new TextMessage(Serializer.serialize(baseResponse).get()));
+                .sendMessage(new TextMessage(baseResponse.getContent()));
     }
 
     @Test
@@ -146,7 +147,8 @@ class WebSocketSessionManagerTest {
 
         LogCaptor logCaptor = LogCaptor.forClass(WebSocketSessionManager.class);
 
-        webSocketSessionManager.sendMessage(mockSession, baseResponse);
+        assertThatThrownBy(() -> webSocketSessionManager.sendMessage(mockSession, baseResponse.getContent()))
+                .isInstanceOf(IOException.class);
 
         verify(mockSession, times(1)).sendMessage(any(TextMessage.class));
 

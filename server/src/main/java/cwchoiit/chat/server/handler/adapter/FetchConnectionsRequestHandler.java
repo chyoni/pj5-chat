@@ -4,9 +4,9 @@ import cwchoiit.chat.server.constants.IdKey;
 import cwchoiit.chat.server.handler.request.BaseRequest;
 import cwchoiit.chat.server.handler.request.FetchConnectionsRequest;
 import cwchoiit.chat.server.handler.response.FetchConnectionsResponse;
+import cwchoiit.chat.server.service.ClientNotificationService;
 import cwchoiit.chat.server.service.UserConnectionService;
 import cwchoiit.chat.server.service.response.ConnectionReadResponse;
-import cwchoiit.chat.server.session.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,7 +22,7 @@ import static cwchoiit.chat.server.constants.MessageType.FETCH_CONNECTIONS_REQUE
 public class FetchConnectionsRequestHandler implements RequestHandler {
 
     private final UserConnectionService userConnectionService;
-    private final WebSocketSessionManager sessionManager;
+    private final ClientNotificationService clientNotificationService;
 
     @Override
     public String messageType() {
@@ -43,7 +43,7 @@ public class FetchConnectionsRequestHandler implements RequestHandler {
                             )
                     ).toList();
 
-            sessionManager.sendMessage(session, new FetchConnectionsResponse(connections));
+            clientNotificationService.sendMessage(session, requestUserId, new FetchConnectionsResponse(connections));
         }
     }
 }

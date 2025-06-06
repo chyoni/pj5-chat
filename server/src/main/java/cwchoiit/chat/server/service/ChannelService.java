@@ -7,6 +7,7 @@ import cwchoiit.chat.server.repository.ChannelRepository;
 import cwchoiit.chat.server.repository.UserChannelRepository;
 import cwchoiit.chat.server.service.response.ChannelCreateResponse;
 import cwchoiit.chat.server.service.response.ChannelParticipantResponse;
+import cwchoiit.chat.server.service.response.ChannelReadResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -105,6 +106,52 @@ public class ChannelService {
         );
     }
 
+    @Transactional
+    public Pair<Optional<ChannelReadResponse>, ChannelResponse> join(String inviteCode, Long userId) {
+        Optional<ChannelReadResponse> channelByInviteCode = findChannelByInviteCode(inviteCode);
+        if (channelByInviteCode.isEmpty()) {
+            log.warn("[join] Channel not found with invite code: {}", inviteCode);
+            return Pair.of(Optional.empty(), NOT_FOUND);
+        }
+
+        ChannelReadResponse channel = channelByInviteCode.get();
+
+        if (isJoined(channel.channelId(), userId)) {
+            log.warn("[join] User is already joined to channel: {}", channel.channelId());
+            return Pair.of(Optional.empty(), ALREADY_JOINED);
+        } else if (channel.headCount() >= MAX_CHANNEL_HEAD_COUNT) {
+            log.warn("[join] Channel head count is over limit: {}", MAX_CHANNEL_HEAD_COUNT);
+            return Pair.of(Optional.empty(), OVER_LIMIT);
+        }
+
+        Channel lockedChannel = channelRepository.findLockByChannelId(channel.channelId()).orElseThrow();
+
+        if (lockedChannel.getHeadCount() < MAX_CHANNEL_HEAD_COUNT) {
+            lockedChannel.changeHeadCount(lockedChannel.getHeadCount() + 1);
+            userChannelRepository.save(UserChannel.create(userId, channel.channelId()));
+        }
+        return Pair.of(Optional.of(channel), SUCCESS);
+    }
+
+    @Transactional
+    public ChannelResponse quit(Long channelId, Long userId) {
+        if (!isJoined(channelId, userId)) {
+            log.warn("[quit] User {} is not joined to channel: {}", userId, channelId);
+            return NOT_JOINED;
+        }
+
+        Channel channel = channelRepository.findLockByChannelId(channelId).orElseThrow();
+
+        if (channel.getHeadCount() > 0) {
+            channel.changeHeadCount(channel.getHeadCount() - 1);
+        } else {
+            log.error("[quit] Channel ID: {} head count is 0. Cannot quit user ID: {} this channel.", channel, userId);
+        }
+
+        userChannelRepository.deleteByUserIdAndChannelId(userId, channelId);
+        return SUCCESS;
+    }
+
     public Pair<Optional<String>, ChannelResponse> enter(Long userId, Long channelId) {
         if (!isJoined(channelId, userId)) {
             log.warn("[enter] User is not joined to channel: {}", channelId);
@@ -123,6 +170,10 @@ public class ChannelService {
         return userChannelRepository.existsByUserIdAndChannelId(userId, channelId);
     }
 
+    public boolean leave(Long userId) {
+        return removeActiveChannel(userId);
+    }
+
     public boolean isOnline(Long userId, Long channelId) {
         String activeChannel = redisTemplate.opsForValue().get(generateKey(userId));
         if (activeChannel == null) {
@@ -136,12 +187,34 @@ public class ChannelService {
                 .map(Channel::getChannelInviteCode);
     }
 
-    public List<Long> findOnlineParticipantIds(Long channelId) {
-        List<Long> userIdsInChannel = findParticipantIds(channelId).stream()
-                .map(ChannelParticipantResponse::userId)
-                .toList();
+    public List<Long> findOnlineParticipantIds(Long channelId, List<Long> userIds) {
+        List<String> keys = userIds.stream().map(this::generateKey).toList();
+        List<String> channelIds = redisTemplate.opsForValue().multiGet(keys);
+        if (channelIds == null) {
+            return List.of();
+        }
 
-        return findOnlineParticipantIds(channelId, userIdsInChannel);
+        List<Long> onlineUserIds = new ArrayList<>(userIds.size());
+        for (int i = 0; i < userIds.size(); i++) {
+            String chId = channelIds.get(i);
+            onlineUserIds.add(chId != null && chId.equals(channelId.toString()) ?
+                    userIds.get(i) :
+                    null
+            );
+        }
+
+        return onlineUserIds;
+    }
+
+    public List<ChannelReadResponse> findChannelsByUserId(Long userId) {
+        return userChannelRepository.findAllByUserId(userId).stream()
+                .map(ChannelReadResponse::of)
+                .toList();
+    }
+
+    public Optional<ChannelReadResponse> findChannelByInviteCode(String channelInviteCode) {
+        return channelRepository.findByChannelInviteCode(channelInviteCode)
+                .map(ChannelReadResponse::of);
     }
 
     public List<ChannelParticipantResponse> findParticipantIds(Long channelId) {
@@ -163,22 +236,8 @@ public class ChannelService {
         redisTemplate.expire(generateKey(userId), TIME_TO_LIVE, TimeUnit.SECONDS);
     }
 
-    private List<Long> findOnlineParticipantIds(Long channelId, List<Long> userIds) {
-        List<String> keys = userIds.stream().map(this::generateKey).toList();
-        List<String> channelIds = redisTemplate.opsForValue().multiGet(keys);
-        if (channelIds == null) {
-            return List.of();
-        }
-
-        List<Long> onlineUserIds = new ArrayList<>();
-        for (int i = 0; i < userIds.size(); i++) {
-            String chId = channelIds.get(i);
-            if (chId != null && chId.equals(channelId.toString())) {
-                onlineUserIds.add(userIds.get(i));
-            }
-        }
-
-        return onlineUserIds;
+    private boolean removeActiveChannel(Long userId) {
+        return redisTemplate.delete(generateKey(userId));
     }
 
     private String generateKey(Long userId) {

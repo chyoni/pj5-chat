@@ -444,6 +444,52 @@ class UserConnectionServiceTest extends SpringBootTestConfiguration {
     }
 
     @Test
+    @DisplayName("초대 수락 - inviter가 파트너 B이고, 파트너 B의 초대 수 제한이 초과한 경우, 초대 수락에 실패한다.")
+    void accept_failed_added() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(100L));
+        when(userConnectionRepository.findUserConnectionBy(eq(2L), eq(100L)))
+                .thenReturn(Optional.of(UserConnection.create(2L, 100L, 100L, PENDING)));
+        when(userService.findUsernameByUserId(eq(2L))).thenReturn(Optional.of("acceptor"));
+
+        User partnerA = User.create("inviter", "inviter");
+        User partnerB = User.create("acceptor", "acceptor");
+        partnerB.changeConnectionCount(50000);
+
+        when(userRepository.findLockByUserId(2L)).thenReturn(Optional.of(partnerA));
+        when(userRepository.findLockByUserId(100L)).thenReturn(Optional.of(partnerB));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(2L), eq(100L), eq(PENDING.name())))
+                .thenReturn(Optional.of(UserConnection.create(2L, 100L, 100L, PENDING)));
+
+        assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageMatching("Connection count limit exceeded.");
+    }
+
+    @Test
+    @DisplayName("초대 수락 - inviter가 파트너 B이고, 파트너 A의 초대 수 제한이 초과한 경우, 초대 수락에 실패한다.")
+    void accept_failed_added2() {
+        when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(100L));
+        when(userConnectionRepository.findUserConnectionBy(eq(2L), eq(100L)))
+                .thenReturn(Optional.of(UserConnection.create(2L, 100L, 100L, PENDING)));
+        when(userService.findUsernameByUserId(eq(2L))).thenReturn(Optional.of("acceptor"));
+
+        User partnerA = User.create("inviter", "inviter");
+        User partnerB = User.create("acceptor", "acceptor");
+        partnerA.changeConnectionCount(50000);
+
+        when(userRepository.findLockByUserId(2L)).thenReturn(Optional.of(partnerA));
+        when(userRepository.findLockByUserId(100L)).thenReturn(Optional.of(partnerB));
+
+        when(userConnectionRepository.findUserConnectionBy(eq(2L), eq(100L), eq(PENDING.name())))
+                .thenReturn(Optional.of(UserConnection.create(2L, 100L, 100L, PENDING)));
+
+        assertThatThrownBy(() -> userConnectionService.accept(2L, "inviter"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Connection count limit exceeded by partner.");
+    }
+
+    @Test
     @DisplayName("초대 수락 - 모든 검증에 통과한 경우, 초대 수락에 성공한다.")
     void accept_success() {
         when(userService.findUserIdByUsername("inviter")).thenReturn(Optional.of(1L));

@@ -7,7 +7,9 @@ import cwchoiit.chat.client.service.TerminalService;
 import cwchoiit.chat.client.service.UserService;
 import cwchoiit.chat.client.service.WebSocketService;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -59,14 +61,19 @@ public class CommandHandler {
         commands.put("logout", this::logout);
         commands.put("login", this::login);
         commands.put("invitecode", this::inviteCode);
+        commands.put("channelinvitecode", this::channelInviteCode);
         commands.put("invite", this::invite);
         commands.put("accept", this::accept);
         commands.put("reject", this::reject);
         commands.put("disconnect", this::disconnect);
         commands.put("connections", this::connections);
         commands.put("pending", this::pending);
+        commands.put("channels", this::channels);
         commands.put("create", this::create);
         commands.put("enter", this::enter);
+        commands.put("join", this::join);
+        commands.put("leave", this::leave);
+        commands.put("quit", this::quit);
         commands.put("clear", this::clear);
         commands.put("exit", this::exit);
     }
@@ -142,6 +149,19 @@ public class CommandHandler {
         return true;
     }
 
+    private Boolean channelInviteCode(String[] params) {
+        if (userService.isInLobby() && params.length > 0) {
+            try {
+                long channelId = Long.parseLong(params[0]);
+                webSocketService.sendMessage(new FetchChannelInviteCodeSendMessage(channelId));
+                terminalService.printSystemMessage("Fetch channel %s invite code.".formatted(channelId));
+            } catch (NumberFormatException e) {
+                terminalService.printSystemMessage("Invalid channel ID: %s".formatted(params[0]));
+            }
+        }
+        return true;
+    }
+
     private Boolean invite(String[] params) {
         if (userService.isInLobby() && params.length > 0) {
             webSocketService.sendMessage(new InviteSendMessage(params[0]));
@@ -190,10 +210,35 @@ public class CommandHandler {
         return true;
     }
 
+    private Boolean channels(String[] params) {
+        if (userService.isInLobby()) {
+            webSocketService.sendMessage(new FetchChannelsSendMessage());
+            terminalService.printSystemMessage("Fetching channels. Please wait...");
+        }
+        return true;
+    }
+
     private boolean create(String[] params) {
-        if (userService.isInLobby() && params.length > 1) {
-            webSocketService.sendMessage(new CreateChannelSendMessage(params[0], params[1]));
+        if (userService.isInLobby() && params.length > 1 && params.length < 100) {
+            webSocketService.sendMessage(new CreateChannelSendMessage(
+                            params[0],
+                            List.of(Arrays.copyOfRange(params, 1, params.length))
+                    )
+            );
             terminalService.printSystemMessage("Creating channel %s. Please wait...".formatted(params[0]));
+        } else {
+            terminalService.printSystemMessage("Invalid channel creation parameters.");
+            terminalService.printSystemMessage("Usage: /create <channel title> <username> <username> ...");
+            terminalService.printSystemMessage("Note: Maximum number of users is 99.");
+        }
+        return true;
+    }
+
+    private boolean join(String[] params) {
+        if (userService.isInLobby() && params.length > 0) {
+            String inviteCode = params[0];
+            webSocketService.sendMessage(new JoinChannelSendMessage(inviteCode));
+            terminalService.printSystemMessage("Joining channel with invite code %s. Please wait...".formatted(inviteCode));
         }
         return true;
     }
@@ -204,6 +249,27 @@ public class CommandHandler {
                 long channelId = Long.parseLong(params[0]);
                 webSocketService.sendMessage(new EnterChannelSendMessage(channelId));
                 terminalService.printSystemMessage("Entering channel %s.".formatted(params[0]));
+            } catch (NumberFormatException e) {
+                terminalService.printSystemMessage("Invalid channel ID: %s".formatted(params[0]));
+            }
+        }
+        return true;
+    }
+
+    private boolean leave(String[] params) {
+        if (userService.isInChannel()) {
+            webSocketService.sendMessage(new LeaveChannelSendMessage());
+            terminalService.printSystemMessage("Leaving channel. Please wait...");
+        }
+        return true;
+    }
+
+    private boolean quit(String[] params) {
+        if (userService.isInLobby() && params.length > 0) {
+            try {
+                long channelId = Long.parseLong(params[0]);
+                webSocketService.sendMessage(new QuitChannelSendMessage(channelId));
+                terminalService.printSystemMessage("Quitting channel %s. Please wait...".formatted(channelId));
             } catch (NumberFormatException e) {
                 terminalService.printSystemMessage("Invalid channel ID: %s".formatted(params[0]));
             }
@@ -229,17 +295,21 @@ public class CommandHandler {
                 '/unregister': Unregisters the current user. ex: /unregister
                 '/login': Logs in the user. ex: /login <username> <password>
                 '/invitecode': Fetches the invite code for the current user. ex: /invitecode
+                '/channelinvitecode': Fetches the invite code for a joined channel. ex: /channelinvitecode <channel id>
                 '/invite': Invites a user to the chat room. ex: /invite <invite code>
                 '/accept': Accepts an invite from a user. ex: /accept <inviter username>
                 '/reject': Rejects an invite from a user. ex: /reject <inviter username>
                 '/disconnect': Disconnects with a user. ex: /disconnect <connected username>
                 '/connections': Fetches the list of connected users. ex: /connections
                 '/pending': Fetches the list of pending connections. ex: /pending
-                '/create': Creates a new direct channel. ex: /create <channel title> <username>
+                '/channels': Fetches the list of joined channels. ex: /channels
+                '/create': Creates a new channel. (Up to 99 users) ex: /create <channel title> <username1> <username2> ...
                 '/enter': Enters a direct channel. ex: /enter <channel id>
+                '/join': Joins a channel with an invite code. ex: /join <invite code>
+                '/quit': Quit the channel with an channel id. ex: /quit <channel id>
                 
                 Commands for Channel:
-                
+                '/leave': Leaves the current channel. ex: /leave
                 
                 Commands for Lobby/Channel:
                 '/clear': Clears the terminal. ex: /clear
