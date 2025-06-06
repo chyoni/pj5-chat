@@ -24,7 +24,6 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    @SuppressWarnings("all")
     public Long createUser(UserRegisterRequest request) {
         User newUser = userRepository.save(
                 User.create(
