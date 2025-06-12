@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import static cwchoiit.chat.common.serializer.Serializer.deserializeList;
+import static cwchoiit.chat.common.serializer.Serializer.serialize;
+import static cwchoiit.chat.server.constants.KeyPrefix.*;
 import static cwchoiit.chat.server.constants.UserConnectionStatus.*;
 
 @Slf4j
@@ -30,7 +33,8 @@ public class UserConnectionService {
     private final UserService userService;
     private final UserConnectionRepository userConnectionRepository;
     private final UserRepository userRepository;
-
+    private final CacheService cacheService;
+    private final long TIME_TO_LIVE = 600L;
     @Getter
     @Setter
     private int LIMIT_CONNECTION_COUNT = 1_000;
@@ -119,6 +123,23 @@ public class UserConnectionService {
 
         UserConnection userConnection = userConnectionRepository.findUserConnectionBy(declinerId, inviterUserId).orElseThrow();
         userConnection.changeStatus(REJECTED);
+        cacheService.delete(List.of(
+                cacheService.generateKey(
+                        CONNECTION_STATUS,
+                        String.valueOf(declinerId),
+                        String.valueOf(inviterUserId)
+                ),
+                cacheService.generateKey(
+                        CONNECTION_STATUS,
+                        String.valueOf(declinerId),
+                        userConnection.getStatus().name()
+                ),
+                cacheService.generateKey(
+                        CONNECTION_STATUS,
+                        String.valueOf(inviterUserId),
+                        userConnection.getStatus().name()
+                )
+        ));
 
         return Pair.of(true, inviterUsername);
     }
@@ -134,7 +155,27 @@ public class UserConnectionService {
                         return Pair.of(true, peerUsername);
                     } else if (status == REJECTED && findInviterUserId(callerId, peerUserId).equals(peerUserId)) {
                         userConnectionRepository.findUserConnectionBy(callerId, peerUserId)
-                                .ifPresent(conn -> conn.changeStatus(DISCONNECTED));
+                                .ifPresent(conn -> {
+                                    conn.changeStatus(DISCONNECTED);
+                                    // 캐시 삭제
+                                    cacheService.delete(List.of(
+                                            cacheService.generateKey(
+                                                    CONNECTION_STATUS,
+                                                    String.valueOf(callerId),
+                                                    String.valueOf(peerUserId)
+                                            ),
+                                            cacheService.generateKey(
+                                                    CONNECTION_STATUS,
+                                                    String.valueOf(callerId),
+                                                    conn.getStatus().name()
+                                            ),
+                                            cacheService.generateKey(
+                                                    CONNECTION_STATUS,
+                                                    String.valueOf(peerUserId),
+                                                    conn.getStatus().name()
+                                            )
+                                    ));
+                                });
                         return Pair.of(true, peerUsername);
                     }
                     return Pair.of(false, "Disconnect failed.");
@@ -143,6 +184,13 @@ public class UserConnectionService {
     }
 
     public List<UserReadResponse> findConnectionUsersByStatus(Long userId, UserConnectionStatus status) {
+        // 캐시 먼저 조회
+        String key = cacheService.generateKey(CONNECTIONS_STATUS, userId.toString(), status.name());
+        Optional<String> cachedUsers = cacheService.get(key);
+        if (cachedUsers.isPresent()) {
+            return deserializeList(cachedUsers.get(), UserReadResponse.class);
+        }
+
         List<ConnectionInformation> partnerASide = userConnectionRepository.findAllUserConnectionByPartnerAUserId(
                 userId,
                 status.name()
@@ -152,24 +200,44 @@ public class UserConnectionService {
                 status.name()
         );
 
-        if (status == ACCEPTED) {
-            return Stream.concat(partnerASide.stream(), partnerBSide.stream())
-                    .map(UserReadResponse::of)
-                    .toList();
-        } else {
-            return Stream.concat(partnerASide.stream(), partnerBSide.stream())
-                    .filter(conn -> !conn.getInviterUserId().equals(userId))
-                    .map(UserReadResponse::of)
-                    .toList();
+        List<UserReadResponse> userReadResponses = getUserReadResponsesByConnectionStatus(
+                userId,
+                status,
+                partnerASide,
+                partnerBSide
+        );
+
+        // 캐시 저장
+        if (!userReadResponses.isEmpty()) {
+            serialize(userReadResponses).ifPresent(serializedUserReadResponse ->
+                    cacheService.set(key, serializedUserReadResponse, TIME_TO_LIVE)
+            );
         }
+
+        return userReadResponses;
     }
 
     public UserConnectionStatus findStatus(Long inviterUserId, Long partnerUserId) {
-        return userConnectionRepository.findUserConnectionBy(
-                        Long.min(inviterUserId, partnerUserId), // (1,2) (2,1) 모두 같은 엔티티여야 하고, 데이터베이스에서 이를 처리하지 않았기 때문에, 서버단에서 처리하기 위함
-                        Long.max(inviterUserId, partnerUserId)
-                ).map(userConnection -> valueOf(userConnection.getStatus().name()))
-                .orElse(NONE);
+        // (1,2) (2,1) 모두 같은 엔티티여야 하고, 데이터베이스에서 이를 처리하지 않았기 때문에, 서버단에서 처리하기 위함
+        long lowerUserId = Long.min(inviterUserId, partnerUserId);
+        long higherUserId = Long.max(inviterUserId, partnerUserId);
+
+        String key = cacheService.generateKey(
+                CONNECTION_STATUS,
+                String.valueOf(lowerUserId),
+                String.valueOf(higherUserId)
+        );
+
+        return cacheService.get(key)
+                .map(UserConnectionStatus::valueOf)
+                .orElseGet(() -> {
+                    UserConnectionStatus status = userConnectionRepository.findUserConnectionBy(lowerUserId, higherUserId)
+                            .map(userConnection -> valueOf(userConnection.getStatus().name()))
+                            .orElse(NONE);
+                    cacheService.set(key, status.name(), TIME_TO_LIVE);
+
+                    return status;
+                });
     }
 
     public long countConnectionByStatus(Long callerUserId, List<Long> partnerUserIds, UserConnectionStatus status) {
@@ -221,6 +289,39 @@ public class UserConnectionService {
         partnerA.changeConnectionCount(partnerA.getConnectionCount() + 1);
         partnerB.changeConnectionCount(partnerB.getConnectionCount() + 1);
         userConnection.changeStatus(ACCEPTED);
+        cacheService.delete(List.of(
+                cacheService.generateKey(
+                        CONNECTION_STATUS,
+                        String.valueOf(partnerA.getUserId()),
+                        String.valueOf(partnerB.getUserId())
+                ),
+                cacheService.generateKey(
+                        CONNECTION_STATUS,
+                        String.valueOf(inviterId),
+                        userConnection.getStatus().name()
+                ),
+                cacheService.generateKey(
+                        CONNECTION_STATUS,
+                        String.valueOf(acceptorId),
+                        userConnection.getStatus().name()
+                )
+        ));
+    }
+
+    private List<UserReadResponse> getUserReadResponsesByConnectionStatus(Long userId,
+                                                                          UserConnectionStatus status,
+                                                                          List<ConnectionInformation> partnerASide,
+                                                                          List<ConnectionInformation> partnerBSide) {
+        if (status == ACCEPTED) {
+            return Stream.concat(partnerASide.stream(), partnerBSide.stream())
+                    .map(UserReadResponse::of)
+                    .toList();
+        } else {
+            return Stream.concat(partnerASide.stream(), partnerBSide.stream())
+                    .filter(conn -> !conn.getInviterUserId().equals(userId))
+                    .map(UserReadResponse::of)
+                    .toList();
+        }
     }
 
     private void disconnect(Long callerId, Long peerId) {
@@ -247,14 +348,46 @@ public class UserConnectionService {
         partnerA.changeConnectionCount(partnerA.getConnectionCount() - 1);
         partnerB.changeConnectionCount(partnerB.getConnectionCount() - 1);
         userConnection.changeStatus(DISCONNECTED);
+        cacheService.delete(List.of(
+                cacheService.generateKey(
+                        CONNECTION_STATUS,
+                        String.valueOf(partnerA.getUserId()),
+                        String.valueOf(partnerB.getUserId())
+                ),
+                cacheService.generateKey(
+                        CONNECTION_STATUS,
+                        String.valueOf(callerId),
+                        userConnection.getStatus().name()
+                ),
+                cacheService.generateKey(
+                        CONNECTION_STATUS,
+                        String.valueOf(peerId),
+                        userConnection.getStatus().name()
+                )
+        ));
     }
 
     private Long findInviterUserId(Long partnerAUserId, Long partnerBUserId) {
-        return userConnectionRepository.findUserConnectionBy(
-                        Long.min(partnerAUserId, partnerBUserId), // (1,2) (2,1) 모두 같은 엔티티여야 하고, 데이터베이스에서 이를 처리하지 않았기 때문에, 서버단에서 처리하기 위함
-                        Long.max(partnerAUserId, partnerBUserId)
-                ).map(UserConnection::getInviterUserId)
-                .orElseThrow();
+        // (1,2) (2,1) 모두 같은 엔티티여야 하고, 데이터베이스에서 이를 처리하지 않았기 때문에, 서버단에서 처리하기 위함
+        long lowerUserId = Long.min(partnerAUserId, partnerBUserId);
+        long higherUserId = Long.max(partnerAUserId, partnerBUserId);
+
+        String key = cacheService.generateKey(
+                INVITER_USER_ID,
+                String.valueOf(lowerUserId),
+                String.valueOf(higherUserId)
+        );
+
+        return cacheService.get(key)
+                .map(Long::valueOf)
+                .orElseGet(() -> {
+                    Long inviterUserId = userConnectionRepository.findUserConnectionBy(lowerUserId, higherUserId)
+                            .map(UserConnection::getInviterUserId)
+                            .orElseThrow();
+                    cacheService.set(key, String.valueOf(inviterUserId), TIME_TO_LIVE);
+
+                    return inviterUserId;
+                });
     }
 
     private void createConnection(Long inviterUserId, Long partnerUserId) {

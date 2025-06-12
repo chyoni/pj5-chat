@@ -1,5 +1,6 @@
 package cwchoiit.chat.server.service;
 
+import cwchoiit.chat.common.serializer.Serializer;
 import cwchoiit.chat.server.constants.ChannelResponse;
 import cwchoiit.chat.server.entity.Channel;
 import cwchoiit.chat.server.entity.UserChannel;
@@ -10,7 +11,6 @@ import cwchoiit.chat.server.service.response.ChannelParticipantResponse;
 import cwchoiit.chat.server.service.response.ChannelReadResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,11 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static cwchoiit.chat.server.constants.ChannelResponse.*;
-import static cwchoiit.chat.server.constants.KeyPrefix.USER_ID;
+import static cwchoiit.chat.server.constants.KeyPrefix.*;
 import static cwchoiit.chat.server.constants.UserConnectionStatus.ACCEPTED;
 
 @Slf4j
@@ -168,7 +167,17 @@ public class ChannelService {
     }
 
     public boolean isJoined(Long channelId, Long userId) {
-        return userChannelRepository.existsByUserIdAndChannelId(userId, channelId);
+        String key = cacheService.generateKey(JOINED_CHANNEL, String.valueOf(channelId), String.valueOf(userId));
+
+        return cacheService.get(key)
+                .map(v -> true)
+                .orElseGet(() -> {
+                    boolean fromDatabase = userChannelRepository.existsByUserIdAndChannelId(userId, channelId);
+                    if (fromDatabase) {
+                        cacheService.set(key, "OK", TIME_TO_LIVE);
+                    }
+                    return fromDatabase;
+                });
     }
 
     public boolean leave(Long userId) {
@@ -184,8 +193,17 @@ public class ChannelService {
     }
 
     public Optional<String> findInviteCode(Long channelId) {
-        return channelRepository.findByChannelId(channelId)
-                .map(Channel::getChannelInviteCode);
+        String key = cacheService.generateKey(CHANNEL_INVITECODE, String.valueOf(channelId));
+
+        return cacheService.get(key)
+                .or(() -> {
+                    Optional<String> inviteCode = channelRepository
+                            .findByChannelId(channelId)
+                            .map(Channel::getChannelInviteCode);
+
+                    inviteCode.ifPresent(code -> cacheService.set(key, code, TIME_TO_LIVE));
+                    return inviteCode;
+                });
     }
 
     public List<Long> findOnlineParticipantIds(Long channelId, List<Long> userIds) {
@@ -208,20 +226,62 @@ public class ChannelService {
     }
 
     public List<ChannelReadResponse> findChannelsByUserId(Long userId) {
-        return userChannelRepository.findAllByUserId(userId).stream()
-                .map(ChannelReadResponse::of)
-                .toList();
+        String key = cacheService.generateKey(CHANNELS, String.valueOf(userId));
+
+        return cacheService.get(key)
+                .map(cached -> Serializer.deserializeList(cached, ChannelReadResponse.class))
+                .orElseGet(() -> {
+                    List<ChannelReadResponse> fromDatabase = userChannelRepository.findAllByUserId(userId).stream()
+                            .map(ChannelReadResponse::of)
+                            .toList();
+
+                    if (!fromDatabase.isEmpty()) {
+                        
+                    }
+                })
     }
 
     public Optional<ChannelReadResponse> findChannelByInviteCode(String channelInviteCode) {
-        return channelRepository.findByChannelInviteCode(channelInviteCode)
-                .map(ChannelReadResponse::of);
+        String key = cacheService.generateKey(CHANNEL, channelInviteCode);
+
+        return cacheService.get(key)
+                .flatMap(cached -> Serializer.deserialize(cached, ChannelReadResponse.class))
+                .or(() -> {
+                    Optional<ChannelReadResponse> channelReadResponse = channelRepository
+                            .findByChannelInviteCode(channelInviteCode)
+                            .map(ChannelReadResponse::of);
+
+                    channelReadResponse.flatMap(Serializer::serialize)
+                            .ifPresent(serialized -> cacheService.set(key, serialized, TIME_TO_LIVE));
+
+                    return channelReadResponse;
+                });
     }
 
     public List<ChannelParticipantResponse> findParticipantIds(Long channelId) {
-        return userChannelRepository.findUserIdsByChannelId(channelId).stream()
-                .map(ChannelParticipantResponse::of)
-                .toList();
+        String key = cacheService.generateKey(PARTICIPANT_IDS, String.valueOf(channelId));
+
+        return cacheService.get(key)
+                .map(cached -> Serializer.deserializeList(cached, String.class).stream()
+                        .map(id -> new ChannelParticipantResponse(Long.valueOf(id)))
+                        .toList()
+                ).orElseGet(() -> {
+                    List<ChannelParticipantResponse> fromDatabase = userChannelRepository
+                            .findUserIdsByChannelId(channelId).stream()
+                            .map(ChannelParticipantResponse::of)
+                            .toList();
+
+                    if (!fromDatabase.isEmpty()) {
+                        List<String> userIds = fromDatabase.stream()
+                                .map(p -> p.userId().toString())
+                                .toList();
+
+                        Serializer.serialize(userIds)
+                                .ifPresent(json -> cacheService.set(key, json, TIME_TO_LIVE));
+                    }
+
+                    return fromDatabase;
+                });
     }
 
     public void setActiveChannel(Long userId, Long channelId) {

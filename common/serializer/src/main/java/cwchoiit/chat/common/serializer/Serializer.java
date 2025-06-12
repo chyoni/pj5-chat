@@ -2,12 +2,14 @@ package cwchoiit.chat.common.serializer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -36,6 +38,15 @@ public class Serializer {
         } catch (Exception e) {
             log.error("[deserialize] Failed to deserialize payload: {}", payload, e);
             return Optional.empty();
+        }
+    }
+
+    public static <T> List<T> deserializeList(String payload, Class<T> clazz) {
+        try {
+            return objectMapper.readerForListOf(clazz).readValue(payload);
+        } catch (Exception e) {
+            log.error("[deserializeList] Failed to deserialize list payload: {}", payload, e);
+            return List.of();
         }
     }
 
