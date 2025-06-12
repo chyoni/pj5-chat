@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static cwchoiit.chat.server.constants.ChannelResponse.*;
+import static cwchoiit.chat.server.constants.KeyPrefix.USER_ID;
 import static cwchoiit.chat.server.constants.UserConnectionStatus.ACCEPTED;
 
 @Slf4j
@@ -33,9 +34,9 @@ public class ChannelService {
     private final UserChannelRepository userChannelRepository;
     private final UserConnectionService userConnectionService;
     private final ChannelRepository channelRepository;
-    private final StringRedisTemplate redisTemplate;
+    private final CacheService cacheService;
 
-    private final int TIME_TO_LIVE = 300;
+    private final long TIME_TO_LIVE = 300L;
     private final int MAX_CHANNEL_HEAD_COUNT = 100;
 
     @Transactional
@@ -175,7 +176,7 @@ public class ChannelService {
     }
 
     public boolean isOnline(Long userId, Long channelId) {
-        String activeChannel = redisTemplate.opsForValue().get(generateKey(userId));
+        String activeChannel = cacheService.get(generateKey(userId)).orElse(null);
         if (activeChannel == null) {
             return false;
         }
@@ -189,7 +190,7 @@ public class ChannelService {
 
     public List<Long> findOnlineParticipantIds(Long channelId, List<Long> userIds) {
         List<String> keys = userIds.stream().map(this::generateKey).toList();
-        List<String> channelIds = redisTemplate.opsForValue().multiGet(keys);
+        List<String> channelIds = cacheService.get(keys);
         if (channelIds == null) {
             return List.of();
         }
@@ -224,23 +225,18 @@ public class ChannelService {
     }
 
     public void setActiveChannel(Long userId, Long channelId) {
-        redisTemplate.opsForValue().set(
-                generateKey(userId),
-                channelId.toString(),
-                TIME_TO_LIVE,
-                TimeUnit.SECONDS
-        );
+        cacheService.set(generateKey(userId), channelId.toString(), TIME_TO_LIVE);
     }
 
     public void refreshActiveChannel(Long userId) {
-        redisTemplate.expire(generateKey(userId), TIME_TO_LIVE, TimeUnit.SECONDS);
+        cacheService.expire(generateKey(userId), TIME_TO_LIVE);
     }
 
     private boolean removeActiveChannel(Long userId) {
-        return redisTemplate.delete(generateKey(userId));
+        return cacheService.delete(generateKey(userId));
     }
 
     private String generateKey(Long userId) {
-        return "chat:user_id:%s:channel".formatted(userId);
+        return "%s:%s:channel".formatted(USER_ID, userId);
     }
 }

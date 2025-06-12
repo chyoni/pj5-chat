@@ -2,6 +2,7 @@ package cwchoiit.chat.server.service;
 
 import cwchoiit.chat.server.SpringBootTestConfiguration;
 import cwchoiit.chat.server.constants.ChannelResponse;
+import cwchoiit.chat.server.constants.KeyPrefix;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.entity.Channel;
 import cwchoiit.chat.server.entity.UserChannel;
@@ -15,7 +16,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -221,7 +221,7 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
         Pair<Optional<String>, ChannelResponse> enterResult =
                 channelService.enter(1L, channelCreateResponse.channelId());
 
-        String channelId = redisTemplate.opsForValue().get("chat:user_id:%s:channel".formatted(1));
+        String channelId = redisTemplate.opsForValue().get("%s:%s:channel".formatted(KeyPrefix.USER_ID, 1));
 
         assertThat(channelId).isNotNull();
         assertThat(channelId).isEqualTo(channelCreateResponse.channelId().toString());
@@ -236,7 +236,7 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
         channelService.refreshActiveChannel(1L);
 
         verify(redisTemplate, times(1))
-                .expire(eq("chat:user_id:%s:channel".formatted(1)), anyLong(), eq(TimeUnit.SECONDS));
+                .expire(eq("%s:%s:channel".formatted(KeyPrefix.USER_ID, 1)), anyLong(), eq(TimeUnit.SECONDS));
     }
 
     @Test
@@ -249,7 +249,7 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
     @Test
     @DisplayName("유저의 활성 채널이 있는 경우, 온라인 상태를 true로 반환한다.")
     void isOnline2() {
-        redisTemplate.opsForValue().set("chat:user_id:%s:channel".formatted(1L), "1");
+        redisTemplate.opsForValue().set("%s:%s:channel".formatted(KeyPrefix.USER_ID, 1L), "1");
         boolean online = channelService.isOnline(1L, 1L);
         assertThat(online).isTrue();
     }
