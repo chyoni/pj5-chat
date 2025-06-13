@@ -5,7 +5,6 @@ import cwchoiit.chat.server.constants.MessageType;
 import cwchoiit.chat.server.handler.response.MessageResponse;
 import cwchoiit.chat.server.session.WebSocketSessionManager;
 import nl.altindag.log.LogCaptor;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,9 +20,10 @@ import org.springframework.web.socket.WebSocketSession;
 import java.io.IOException;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@DisplayName("Service - ClientNotificationService")
 @ExtendWith(MockitoExtension.class)
 class ClientNotificationServiceTest {
 

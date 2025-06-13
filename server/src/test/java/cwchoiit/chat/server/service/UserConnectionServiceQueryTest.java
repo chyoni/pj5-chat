@@ -8,10 +8,13 @@ import cwchoiit.chat.server.repository.UserConnectionRepository;
 import cwchoiit.chat.server.repository.UserRepository;
 import cwchoiit.chat.server.service.response.UserReadResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -30,6 +33,16 @@ class UserConnectionServiceQueryTest extends SpringBootTestConfiguration {
     UserConnectionRepository userConnectionRepository;
     @Autowired
     UserConnectionService userConnectionService;
+    @Autowired
+    StringRedisTemplate redisTemplate;
+
+    @AfterEach
+    void tearDown() {
+        redisTemplate.execute((RedisCallback<Object>) connection -> {
+            connection.serverCommands().flushDb();
+            return null;
+        });
+    }
 
     @Test
     @DisplayName("UserConnectionStatus, UserId를 통해 현재 연결된 유저 커넥션 정보를 가져올 수 있다. (ACCEPTED 상태가 아닌 경우)")

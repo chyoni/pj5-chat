@@ -5,10 +5,13 @@ import cwchoiit.chat.server.entity.User;
 import cwchoiit.chat.server.repository.UserRepository;
 import cwchoiit.chat.server.service.request.UserRegisterRequest;
 import cwchoiit.chat.server.service.response.UserReadResponse;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -38,6 +41,16 @@ class UserServiceTest extends SpringBootTestConfiguration {
 
     @Autowired
     UserService userService;
+    @Autowired
+    StringRedisTemplate redisTemplate;
+
+    @AfterEach
+    void tearDown() {
+        redisTemplate.execute((RedisCallback<Object>) connection -> {
+            connection.serverCommands().flushDb();
+            return null;
+        });
+    }
 
     @Test
     @DisplayName("유저 생성이 정상적으로 수행된다.")

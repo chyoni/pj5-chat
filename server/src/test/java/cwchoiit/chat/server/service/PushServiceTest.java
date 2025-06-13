@@ -13,6 +13,7 @@ import static cwchoiit.chat.server.constants.MessageType.INVITE_RESPONSE;
 import static cwchoiit.chat.server.constants.MessageType.MESSAGE;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@DisplayName("Service - PushService")
 @ExtendWith(MockitoExtension.class)
 class PushServiceTest {
 

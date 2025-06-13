@@ -9,14 +9,9 @@ import cwchoiit.chat.server.constants.ChannelResponse;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.entity.UserConnection;
 import cwchoiit.chat.server.repository.UserConnectionRepository;
-import cwchoiit.chat.server.service.ChannelService;
-import cwchoiit.chat.server.service.MessageService;
-import cwchoiit.chat.server.service.UserConnectionService;
-import cwchoiit.chat.server.service.UserService;
+import cwchoiit.chat.server.service.*;
 import cwchoiit.chat.server.service.request.UserRegisterRequest;
 import cwchoiit.chat.server.service.response.ChannelCreateResponse;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,6 +27,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
@@ -50,6 +46,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import static cwchoiit.chat.server.constants.KeyPrefix.CONNECTION_STATUS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
@@ -72,8 +69,10 @@ class E2ETest extends SpringBootTestConfiguration {
     UserConnectionService userConnectionService;
     @Autowired
     UserConnectionRepository userConnectionRepository;
-    @PersistenceContext
-    EntityManager entityManager;
+    @Autowired
+    TransactionTemplate transactionTemplate;
+    @Autowired
+    CacheService cacheService;
 
     Client createClient(String sessionId) throws ExecutionException, InterruptedException, URISyntaxException {
         String url = String.format("ws://localhost:%d/ws/v1/message", port);
@@ -159,10 +158,21 @@ class E2ETest extends SpringBootTestConfiguration {
 
         // 서비스를 통해 유저 간 연결상태를 만들면, 내부 로직에서 레코드 락으로 락을 점유하고 있기 때문에 이 전체 테스트에서 여전히 그 락이 유효해짐. 그래서 하단에 회원 탈퇴가 불가능함.
         // 따라서, 데이터베이스에 직접 연결 상태를 저장하고 flush
-        UserConnection userConnection = userConnectionRepository.findUserConnectionBy(userAId, userBId).orElseThrow();
-        userConnection.changeStatus(UserConnectionStatus.ACCEPTED);
-        entityManager.flush();
-        entityManager.clear();
+        transactionTemplate.execute(status -> {
+            UserConnection userConnection = userConnectionRepository.findUserConnectionBy(userAId, userBId).orElseThrow();
+            userConnection.changeStatus(UserConnectionStatus.ACCEPTED);
+            return null;
+        });
+
+        // 캐시 무효화 - (위에서 상태를 변경했지만 테스트 코드로 변경했기 때문에, 실제 서비스 코드에서 캐시가 그대로 남아있을 수 있다)
+        long lowerUserId = Long.min(userAId, userBId);
+        long higherUserId = Long.max(userAId, userBId);
+        String cacheKey = cacheService.generateKey(
+                CONNECTION_STATUS,  // CONNECTION_STATUS 상수값
+                String.valueOf(lowerUserId),
+                String.valueOf(higherUserId)
+        );
+        cacheService.delete(cacheKey);
 
         // 유저끼리 채팅 만들기
         Pair<Optional<ChannelCreateResponse>, ChannelResponse> testChannel =

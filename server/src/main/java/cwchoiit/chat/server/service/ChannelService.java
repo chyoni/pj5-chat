@@ -129,6 +129,10 @@ public class ChannelService {
         if (lockedChannel.getHeadCount() < MAX_CHANNEL_HEAD_COUNT) {
             lockedChannel.changeHeadCount(lockedChannel.getHeadCount() + 1);
             userChannelRepository.save(UserChannel.create(userId, channel.channelId()));
+            cacheService.delete(List.of(
+                    cacheService.generateKey(CHANNEL, inviteCode),
+                    cacheService.generateKey(CHANNEL, String.valueOf(userId))
+            ));
         }
         return Pair.of(Optional.of(channel), SUCCESS);
     }
@@ -149,6 +153,10 @@ public class ChannelService {
         }
 
         userChannelRepository.deleteByUserIdAndChannelId(userId, channelId);
+        cacheService.delete(List.of(
+                cacheService.generateKey(CHANNEL, channel.getChannelInviteCode()),
+                cacheService.generateKey(CHANNEL, String.valueOf(userId))
+        ));
         return SUCCESS;
     }
 
@@ -236,9 +244,11 @@ public class ChannelService {
                             .toList();
 
                     if (!fromDatabase.isEmpty()) {
-                        
+                        Serializer.serialize(fromDatabase)
+                                .ifPresent(serialized -> cacheService.set(key, serialized, TIME_TO_LIVE));
                     }
-                })
+                    return fromDatabase;
+                });
     }
 
     public Optional<ChannelReadResponse> findChannelByInviteCode(String channelInviteCode) {

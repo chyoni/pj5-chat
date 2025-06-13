@@ -35,8 +35,7 @@ public class CacheService {
 
     public boolean delete(String key) {
         try {
-            stringRedisTemplate.delete(key);
-            return true;
+            return stringRedisTemplate.delete(key);
         } catch (Exception e) {
             log.error("[delete] Redis delete failed. key = {}", key, e);
             return false;
