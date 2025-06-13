@@ -207,13 +207,25 @@ class UserServiceTest extends SpringBootTestConfiguration {
     void findUserByConnectionInviteCode() {
         User save = userRepository.save(User.create("test", "test"));
 
+        long noCachedStart = System.currentTimeMillis();
         UserReadResponse userReadResponse = userService.findUserByConnectionInviteCode(save.getConnectionInviteCode()).orElseThrow();
+        long noCachedEnd = System.currentTimeMillis();
 
         assertThat(userReadResponse).isNotNull();
         assertThat(userReadResponse.userId()).isEqualTo(save.getUserId());
         assertThat(userReadResponse.username()).isEqualTo(save.getUsername());
 
         verify(userRepository, times(1)).findByConnectionInviteCode(eq(save.getConnectionInviteCode()));
+
+        // 캐시 검증
+        long cachedStart = System.currentTimeMillis();
+        UserReadResponse cached = userService.findUserByConnectionInviteCode(save.getConnectionInviteCode()).orElseThrow();
+        long cachedEnd = System.currentTimeMillis();
+
+        assertThat(cached).isNotNull();
+        assertThat(cached.userId()).isEqualTo(save.getUserId());
+        assertThat(cached.username()).isEqualTo(save.getUsername());
+        assertThat(cachedEnd - cachedStart).isLessThanOrEqualTo(noCachedEnd - noCachedStart);
     }
 
     @Test

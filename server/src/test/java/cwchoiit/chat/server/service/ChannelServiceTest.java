@@ -50,6 +50,8 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
     UserChannelRepository userChannelRepository;
     @MockitoSpyBean
     ChannelRepository channelRepository;
+    @MockitoSpyBean
+    CacheService cacheService;
     @Autowired
     ChannelService channelService;
 
@@ -122,6 +124,30 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
         assertThat(result.getSecond()).isEqualTo(ChannelResponse.SUCCESS);
 
         verify(userChannelRepository, times(1)).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("채널 생성 후, 채널 초대 코드를 찾을 때 캐시가 없는 경우 데이터베이스를 조회한 후 캐시에 저장한다.")
+    void createDirectChannel_cached() {
+        when(userConnectionService.findStatus(eq(1L), eq(2L)))
+                .thenReturn(UserConnectionStatus.ACCEPTED);
+
+        Pair<Optional<ChannelCreateResponse>, ChannelResponse> result =
+                channelService.createDirectChannel(1L, 2L, "Channel");
+
+        ChannelCreateResponse channelCreateResponse = result.getFirst().orElseThrow();
+
+        assertThat(logCaptor.getWarnLogs()).isEmpty();
+        assertThat(result.getFirst()).isNotEmpty();
+        assertThat(channelCreateResponse).isNotNull();
+        assertThat(channelCreateResponse.title()).isEqualTo("Channel");
+        assertThat(channelCreateResponse.headCount()).isEqualTo(2);
+        assertThat(result.getSecond()).isEqualTo(ChannelResponse.SUCCESS);
+
+        verify(userChannelRepository, times(1)).saveAll(any());
+
+        String inviteCode = channelService.findInviteCode(result.getFirst().get().channelId()).orElseThrow();
+        verify(cacheService, times(1)).set(anyString(), eq(inviteCode), anyLong());
     }
 
     @Test
@@ -353,12 +379,34 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
         userChannelRepository.save(UserChannel.create(1L, ch1.getChannelId()));
         userChannelRepository.save(UserChannel.create(1L, ch2.getChannelId()));
 
+        long noCachedStart = System.currentTimeMillis();
         List<ChannelReadResponse> channels = channelService.findChannelsByUserId(1L);
+        long noCachedEnd = System.currentTimeMillis();
 
         assertThat(channels).isNotEmpty();
         assertThat(channels).hasSize(2);
         assertThat(channels.get(0).channelId()).isEqualTo(ch1.getChannelId());
         assertThat(channels.get(1).channelId()).isEqualTo(ch2.getChannelId());
+
+        long cachedStart = System.currentTimeMillis();
+        List<ChannelReadResponse> cached = channelService.findChannelsByUserId(1L);
+        long cachedEnd = System.currentTimeMillis();
+
+        assertThat(cached).isNotEmpty();
+        assertThat(cached).hasSize(2);
+        assertThat(cached.get(0).channelId()).isEqualTo(ch1.getChannelId());
+        assertThat(cached.get(1).channelId()).isEqualTo(ch2.getChannelId());
+
+        assertThat(cachedEnd - cachedStart).isLessThanOrEqualTo(noCachedEnd - noCachedStart);
+    }
+
+    @Test
+    @DisplayName("유저 ID를 통해 해당 유저가 속한 채널들을 찾을 수 있지만, 속한 채널이 없는 경우 빈 리스트를 반환한다.")
+    void findChannelsByUserId_empty() {
+        List<ChannelReadResponse> channels = channelService.findChannelsByUserId(1L);
+
+        assertThat(channels).isEmpty();
+        assertThat(channels).hasSize(0);
     }
 
     @Test
@@ -366,11 +414,24 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
     void findChannelByInviteCode() {
         Channel channel = channelRepository.save(Channel.create("ch", 2));
 
+        long noCachedStart = System.currentTimeMillis();
         ChannelReadResponse channelReadResponse = channelService.findChannelByInviteCode(channel.getChannelInviteCode()).orElseThrow();
+        long noCachedEnd = System.currentTimeMillis();
 
         assertThat(channelReadResponse.channelId()).isEqualTo(channel.getChannelId());
         assertThat(channelReadResponse.title()).isEqualTo(channel.getTitle());
         assertThat(channelReadResponse.headCount()).isEqualTo(channel.getHeadCount());
+
+        // 캐시 검증
+        long cachedStart = System.currentTimeMillis();
+        ChannelReadResponse cached = channelService.findChannelByInviteCode(channel.getChannelInviteCode()).orElseThrow();
+        long cachedEnd = System.currentTimeMillis();
+
+        assertThat(cached.channelId()).isEqualTo(channel.getChannelId());
+        assertThat(cached.title()).isEqualTo(channel.getTitle());
+        assertThat(cached.headCount()).isEqualTo(channel.getHeadCount());
+
+        assertThat(cachedEnd - cachedStart).isLessThanOrEqualTo(noCachedEnd - noCachedStart);
     }
 
     @Test
@@ -503,5 +564,15 @@ class ChannelServiceTest extends SpringBootTestConfiguration {
         assertThat(response.getFirst().get().headCount()).isEqualTo(2);
         assertThat(ch.getHeadCount()).isEqualTo(3);
         assertThat(response.getSecond()).isEqualTo(ChannelResponse.SUCCESS);
+
+        // isJoined 캐시 검증
+        long noCachedStart = System.currentTimeMillis();
+        channelService.isJoined(ch.getChannelId(), 2L);
+        long noCachedEnd = System.currentTimeMillis();
+
+        long cachedStart = System.currentTimeMillis();
+        channelService.isJoined(ch.getChannelId(), 2L);
+        long cachedEnd = System.currentTimeMillis();
+        assertThat(cachedEnd - cachedStart).isLessThanOrEqualTo(noCachedEnd - noCachedStart);
     }
 }

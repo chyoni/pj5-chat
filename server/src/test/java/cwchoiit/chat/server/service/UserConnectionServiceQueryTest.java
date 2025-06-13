@@ -1,6 +1,7 @@
 package cwchoiit.chat.server.service;
 
 import cwchoiit.chat.server.SpringBootTestConfiguration;
+import cwchoiit.chat.server.constants.KeyPrefix;
 import cwchoiit.chat.server.constants.UserConnectionStatus;
 import cwchoiit.chat.server.entity.User;
 import cwchoiit.chat.server.entity.UserConnection;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static cwchoiit.chat.server.constants.KeyPrefix.*;
 import static org.assertj.core.api.Assertions.*;
 
 @Slf4j
@@ -35,6 +37,8 @@ class UserConnectionServiceQueryTest extends SpringBootTestConfiguration {
     UserConnectionService userConnectionService;
     @Autowired
     StringRedisTemplate redisTemplate;
+    @Autowired
+    CacheService cacheService;
 
     @AfterEach
     void tearDown() {
@@ -132,6 +136,64 @@ class UserConnectionServiceQueryTest extends SpringBootTestConfiguration {
 
         assertThat(connections.size()).isEqualTo(3);
         assertThat(connections2.size()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("캐시가 저장된 경우, UserConnectionStatus, UserId를 통해 현재 연결된 유저 커넥션 정보를 캐시로부터 가져올 수 있다.")
+    void findConnectionUsersByStatus3() {
+        User u1 = userRepository.save(User.create("u1", "u1"));
+        User u2 = userRepository.save(User.create("u2", "u2"));
+        User u3 = userRepository.save(User.create("u3", "u3"));
+        User u4 = userRepository.save(User.create("u4", "u4"));
+
+        userConnectionRepository.save(
+                UserConnection.create(
+                        u1.getUserId(),
+                        u2.getUserId(),
+                        u1.getUserId(),
+                        UserConnectionStatus.ACCEPTED)
+        );
+
+        userConnectionRepository.save(
+                UserConnection.create(
+                        u1.getUserId(),
+                        u3.getUserId(),
+                        u1.getUserId(),
+                        UserConnectionStatus.ACCEPTED)
+        );
+
+        userConnectionRepository.save(
+                UserConnection.create(
+                        u4.getUserId(),
+                        u1.getUserId(),
+                        u4.getUserId(),
+                        UserConnectionStatus.ACCEPTED)
+        );
+
+        long noCachedStart = System.currentTimeMillis();
+        List<UserReadResponse> connections = userConnectionService.findConnectionUsersByStatus(
+                u1.getUserId(),
+                UserConnectionStatus.ACCEPTED
+        );
+        long noCachedEnd = System.currentTimeMillis();
+        List<UserReadResponse> connections2 = userConnectionService.findConnectionUsersByStatus(
+                u2.getUserId(),
+                UserConnectionStatus.ACCEPTED
+        );
+
+        assertThat(connections.size()).isEqualTo(3);
+        assertThat(connections2.size()).isEqualTo(1);
+
+        // 캐시 검증
+        long cachedStart = System.currentTimeMillis();
+        List<UserReadResponse> cached = userConnectionService.findConnectionUsersByStatus(
+                u1.getUserId(),
+                UserConnectionStatus.ACCEPTED
+        );
+        long cachedEnd = System.currentTimeMillis();
+
+        assertThat(cached.size()).isEqualTo(3);
+        assertThat(cachedEnd - cachedStart).isLessThanOrEqualTo(noCachedEnd - noCachedStart);
     }
 
     @Test
