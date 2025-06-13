@@ -1,5 +1,8 @@
 rootProject.name = 'pj5-chat'
 
 include('server')
+include('push')
+
 include('client')
+
 include('common:serializer')
