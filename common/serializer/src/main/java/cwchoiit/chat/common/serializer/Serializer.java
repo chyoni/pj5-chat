@@ -3,7 +3,9 @@ package cwchoiit.chat.common.serializer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 
@@ -55,6 +57,17 @@ public class Serializer {
             return Optional.of(objectMapper.writeValueAsString(payload));
         } catch (JsonProcessingException e) {
             log.error("[serialize] Failed to serialize payload: {}", payload, e);
+            return Optional.empty();
+        }
+    }
+
+    public static Optional<String> addKeyValue(String json, String key, String value) {
+        try {
+            ObjectNode node = (ObjectNode) objectMapper.readTree(json);
+            node.put(key, value);
+            return Optional.of(objectMapper.writeValueAsString(node));
+        } catch (Exception e) {
+            log.error("[addKeyValue]  Failed to add key/value to Json: {} key: {}, value: {}. ", json, key, value, e);
             return Optional.empty();
         }
     }

@@ -1,5 +1,7 @@
 package cwchoiit.chat.server.service;
 
+import cwchoiit.chat.server.service.request.kafka.push.outbound.ChatMessageOutboundMessage;
+import cwchoiit.chat.server.service.request.kafka.push.outbound.InviteOutboundMessage;
 import nl.altindag.log.LogCaptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +36,7 @@ class PushServiceTest {
     @Test
     @DisplayName("푸시 메시지에 해당하는 타입인 경우 푸시 메시지가 발송된다.")
     void push() {
-        pushService.registerPushMessageType(MESSAGE);
+        pushService.registerPushMessageType(MESSAGE, ChatMessageOutboundMessage.class);
         pushService.pushMessage(1L, MESSAGE, "Message");
 
         assertThat(logCaptor.getInfoLogs()).anyMatch(infoLog -> infoLog.contains("Push message : "));
@@ -43,7 +45,7 @@ class PushServiceTest {
     @Test
     @DisplayName("푸시 메시지에 해당하는 타입이 아닌 경우 푸시 메시지가 발송되지 않는다.")
     void push_not() {
-        pushService.registerPushMessageType(INVITE_RESPONSE);
+        pushService.registerPushMessageType(INVITE_RESPONSE, InviteOutboundMessage.class);
         pushService.pushMessage(1L, MESSAGE, "Message");
 
         assertThat(logCaptor.getInfoLogs()).isEmpty();

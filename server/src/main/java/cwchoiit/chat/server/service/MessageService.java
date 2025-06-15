@@ -4,6 +4,7 @@ import cwchoiit.chat.common.serializer.Serializer;
 import cwchoiit.chat.server.constants.MessageType;
 import cwchoiit.chat.server.entity.Message;
 import cwchoiit.chat.server.handler.response.MessageResponse;
+import cwchoiit.chat.server.service.request.kafka.push.outbound.ChatMessageOutboundMessage;
 import cwchoiit.chat.server.service.response.ChannelParticipantResponse;
 import cwchoiit.chat.server.session.WebSocketSessionManager;
 import jakarta.annotation.PostConstruct;
@@ -35,7 +36,7 @@ public class MessageService {
 
     @PostConstruct
     public void init() {
-        pushService.registerPushMessageType(MessageType.MESSAGE);
+        pushService.registerPushMessageType(MessageType.MESSAGE, ChatMessageOutboundMessage.class);
     }
 
     public void sendMessage(Long channelId, Long senderId, String content) {

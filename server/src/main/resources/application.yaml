@@ -49,3 +49,9 @@ spring:
       port: 6379
       repositories:
         enabled: false
+
+chat-server:
+  kafka:
+    listeners:
+      push:
+        topic: push-notification

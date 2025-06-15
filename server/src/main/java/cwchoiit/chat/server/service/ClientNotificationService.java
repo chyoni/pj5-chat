@@ -2,6 +2,7 @@ package cwchoiit.chat.server.service;
 
 import cwchoiit.chat.common.serializer.Serializer;
 import cwchoiit.chat.server.handler.response.BaseResponse;
+import cwchoiit.chat.server.service.request.kafka.push.outbound.*;
 import cwchoiit.chat.server.session.WebSocketSessionManager;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -24,16 +25,15 @@ public class ClientNotificationService {
 
     @PostConstruct
     public void init() {
-        pushService.registerPushMessageType(INVITE_RESPONSE);
-        pushService.registerPushMessageType(ASK_INVITE);
-        pushService.registerPushMessageType(ACCEPT_RESPONSE);
-        pushService.registerPushMessageType(NOTIFY_ACCEPT);
-        pushService.registerPushMessageType(JOIN_CHANNEL_RESPONSE);
-        pushService.registerPushMessageType(NOTIFY_CHANNEL_JOIN);
-        pushService.registerPushMessageType(DISCONNECT_RESPONSE);
-        pushService.registerPushMessageType(REJECT_RESPONSE);
-        pushService.registerPushMessageType(CHANNEL_CREATE_RESPONSE);
-        pushService.registerPushMessageType(QUIT_CHANNEL_RESPONSE);
+        pushService.registerPushMessageType(INVITE_RESPONSE, InviteOutboundMessage.class);
+        pushService.registerPushMessageType(ASK_INVITE, InviteNotificationOutboundMessage.class);
+        pushService.registerPushMessageType(ACCEPT_RESPONSE, AcceptOutboundMessage.class);
+        pushService.registerPushMessageType(NOTIFY_ACCEPT, AcceptNotificationOutboundMessage.class);
+        pushService.registerPushMessageType(NOTIFY_CHANNEL_JOIN, ChannelJoinNotificationOutboundMessage.class);
+        pushService.registerPushMessageType(DISCONNECT_RESPONSE, DisconnectOutboundMessage.class);
+        pushService.registerPushMessageType(REJECT_RESPONSE, RejectOutboundMessage.class);
+        pushService.registerPushMessageType(CHANNEL_CREATE_RESPONSE, CreateChannelOutboundMessage.class);
+        pushService.registerPushMessageType(QUIT_CHANNEL_RESPONSE, QuitChannelOutboundMessage.class);
     }
 
     public void sendMessage(WebSocketSession session, Long userId, BaseResponse response) {

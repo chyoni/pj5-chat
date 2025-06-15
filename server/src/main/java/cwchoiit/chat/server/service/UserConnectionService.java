@@ -234,7 +234,10 @@ public class UserConnectionService {
                     UserConnectionStatus status = userConnectionRepository.findUserConnectionBy(lowerUserId, higherUserId)
                             .map(userConnection -> valueOf(userConnection.getStatus().name()))
                             .orElse(NONE);
-                    cacheService.set(key, status.name(), TIME_TO_LIVE);
+
+                    if (status != NONE) {
+                        cacheService.set(key, status.name(), TIME_TO_LIVE);
+                    }
 
                     return status;
                 });
