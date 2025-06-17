@@ -1,0 +1,39 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  application:
+    name: server-auth
+  datasource:
+    source:
+      hikari:
+        pool-name: SourceConnectionPool
+        minimum-idle: 10
+        maximum-pool-size: 20
+        idle-timeout: 60000 # 1분
+        connection-timeout: 30000 # 30초
+        jdbc-url: jdbc:mysql://localhost:3306/chat
+        username: chatdev
+        password: chatdev
+        driver-class-name: com.mysql.cj.jdbc.Driver
+    replica:
+      hikari:
+        pool-name: ReplicaConnectionPool
+        minimum-idle: 10
+        maximum-pool-size: 20
+        idle-timeout: 60000 # 1분
+        connection-timeout: 30000 # 30초
+        jdbc-url: jdbc:mysql://localhost:13306/chat
+        username: chatdev
+        password: chatdev
+        driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      repositories:
+        enabled: false

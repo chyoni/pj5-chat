@@ -54,8 +54,8 @@ allprojects {
                 enabled = true
                 element = 'CLASS'
                 includes = [
-                        'cwchoiit.chat.server.service',
-                        'cwchoiit.chat.server.handler.*'
+                        'cwchoiit.server.chat.service',
+                        'cwchoiit.server.chat.handler.*'
                 ]
                 excludes = [
                         '*.equals*',
