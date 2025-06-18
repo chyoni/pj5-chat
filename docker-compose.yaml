@@ -1,6 +1,16 @@
 name: pj5-chat
 
 services:
+  nginx:
+    hostname: pj5-chat-nginx
+    container_name: pj5-chat-nginx
+    image: nginx:1.27.5
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/conf/nginx.conf:/etc/nginx/nginx.conf
+    restart: unless-stopped
+
   mysql-source:
     hostname: pj5-chat-mysql-source
     container_name: pj5-chat-mysql-source

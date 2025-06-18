@@ -14,21 +14,20 @@ import org.jline.reader.UserInterruptException;
 public class ChatClient {
     public static void main(String[] args) {
 
-        final String REST_BASE_URL = "localhost:8080";
-        final String WEBSOCKET_BASE_URL = "localhost:8090";
+        final String BASE_URL = "localhost:80";
         final String WEBSOCKET_ENDPOINT = "/ws/v1/message";
 
         TerminalService terminalService = TerminalService.create();
         UserService userService = new UserService();
         ReceiveMessageHandler receiveMessageHandler = new ReceiveMessageHandler(terminalService, userService);
 
-        RestApiService restApiService = new RestApiService(terminalService, REST_BASE_URL);
+        RestApiService restApiService = new RestApiService(terminalService, BASE_URL);
         WebSocketSenderHandler webSocketSenderHandler = new WebSocketSenderHandler(terminalService);
         WebSocketService webSocketService = new WebSocketService(
                 terminalService,
                 userService,
                 webSocketSenderHandler,
-                WEBSOCKET_BASE_URL,
+                BASE_URL,
                 WEBSOCKET_ENDPOINT
         );
         webSocketService.setReceiverHandler(new WebSocketReceiverHandler(receiveMessageHandler));
