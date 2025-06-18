@@ -9,17 +9,24 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.RedisCallback;
 
 import static cwchoiit.server.chat.constants.MessageType.INVITE_RESPONSE;
 import static cwchoiit.server.chat.constants.MessageType.MESSAGE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @DisplayName("Service - PushService")
 @ExtendWith(MockitoExtension.class)
 class PushServiceTest {
 
     LogCaptor logCaptor;
+    @Mock
+    KafkaProducerService kafkaProducerService;
     @InjectMocks
     private PushService pushService;
 

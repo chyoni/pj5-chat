@@ -2,11 +2,6 @@ spring:
   config:
     activate:
       on-profile: test
-  datasource:
-    url: ${TEST_DB_URL}
-    username: ${TEST_DB_USERNAME}
-    password: ${TEST_DB_PASSWORD}
-    driver-class-name: ${TEST_DB_DRIVER}
   data:
     redis:
       host: localhost
@@ -15,3 +10,20 @@ spring:
     init:
       mode: always
       encoding: UTF-8
+  kafka:
+    bootstrap-servers: localhost:19094,localhost:19095,localhost:19096
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 3000
+        retry.backoff.ms: 100
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+chat-server:
+  kafka:
+    listeners:
+      push:
+        topic: push-notification

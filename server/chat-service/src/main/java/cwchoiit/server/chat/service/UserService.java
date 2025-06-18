@@ -49,7 +49,6 @@ public class UserService {
 
     public Optional<Long> findUserIdByUsername(String username) {
         String cacheUserIdKey = cacheService.generateKey(USER_ID, username);
-
         return cacheService.get(cacheUserIdKey)
                 .map(Long::parseLong)
                 .or(() -> {

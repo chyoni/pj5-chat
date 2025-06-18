@@ -17,9 +17,9 @@ public class SpringBootTestConfiguration {
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
         MySQLContainer<?> mysql = MySqlTestContainer.getInstance();
-        registry.add("TEST_DB_URL", mysql::getJdbcUrl);
-        registry.add("TEST_DB_USERNAME", mysql::getUsername);
-        registry.add("TEST_DB_PASSWORD", mysql::getPassword);
-        registry.add("TEST_DB_DRIVER", mysql::getDriverClassName);
+        registry.add("spring.datasource.url", mysql::getJdbcUrl);
+        registry.add("spring.datasource.username", mysql::getUsername);
+        registry.add("spring.datasource.password", mysql::getPassword);
+        registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
     }
 }
